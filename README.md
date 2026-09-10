@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/TimUx/Doku-Wiki-Confluence_migration/actions/workflows/ci.yml/badge.svg)](https://github.com/TimUx/Doku-Wiki-Confluence_migration/actions/workflows/ci.yml)
 [![Security](https://github.com/TimUx/Doku-Wiki-Confluence_migration/actions/workflows/security.yml/badge.svg)](https://github.com/TimUx/Doku-Wiki-Confluence_migration/actions/workflows/security.yml)
+[![UI Screenshots](https://github.com/TimUx/Doku-Wiki-Confluence_migration/actions/workflows/screenshots.yml/badge.svg)](https://github.com/TimUx/Doku-Wiki-Confluence_migration/actions/workflows/screenshots.yml)
 
 Eigenständig laufende Go-Webanwendung zur read-only Analyse eines DokuWiki und zur Vorbereitung einer manuellen Migration nach Confluence 10.2.17. Die Weboberfläche, HTTP-API, SQLite-Datenbank, Parser und Exportlogik laufen in einer einzelnen Binary.
 
@@ -21,7 +22,7 @@ Eigenständig laufende Go-Webanwendung zur read-only Analyse eines DokuWiki und 
 
 ## Voraussetzungen und Build
 
-Go 1.25.13 oder neuer wird nur zum Bauen benötigt. Die fertige Binary benötigt weder Go, Node.js noch einen externen Web- oder Datenbankserver.
+Go 1.26.8 oder neuer wird nur zum Bauen benötigt. Die fertige Binary benötigt weder Go, Node.js noch einen externen Web- oder Datenbankserver. Node.js und Chromium werden ausschließlich vom Screenshot-Workflow verwendet.
 
 ```bash
 go mod download
@@ -94,9 +95,26 @@ Die Anwendung ist kein Ersatz für ein DokuWiki-Backup. Vor dem ersten Produktiv
 
 - `.github/workflows/ci.yml` prüft jeden Push und Pull Request.
 - `.github/workflows/security.yml` prüft Go-Abhängigkeiten mit `govulncheck`.
+- `.github/workflows/screenshots.yml` startet eine Testinstanz, prüft die UI mit Chromium und aktualisiert die Dokumentationsbilder.
 - `.github/workflows/release.yml` baut Linux-Artefakte und SHA-256-Prüfsummen für Tags wie `v0.1.0`.
 - Dependabot schlägt Aktualisierungen für Go-Module und GitHub Actions vor.
 
 Nach dem ersten Push sollte unter **Settings → Branches** ein Schutz für `main` aktiviert werden, der den Statuscheck `Test, Vet & Build` voraussetzt. Modulpfad, interne Imports, Badges und Repository-Links sind bereits auf `github.com/TimUx/Doku-Wiki-Confluence_migration` eingestellt.
 
 Weitere Hinweise stehen in [CONTRIBUTING.md](CONTRIBUTING.md) und [SECURITY.md](SECURITY.md).
+
+## Screenshots
+
+Die folgenden Bilder werden vom GitHub-Workflow mit dem fiktiven Wiki unter `testdata/dokuwiki` erzeugt. Details zum Ablauf stehen in [docs/ui.md](docs/ui.md).
+
+### Migrationsübersicht
+
+![Migrationsübersicht mit Testdaten](docs/screenshots/dashboard.png)
+
+### Seitendetail
+
+![Seitendetail mit Vorschau](docs/screenshots/page-detail.png)
+
+### Plugin-Inventar
+
+![Plugin-Inventar](docs/screenshots/plugins.png)

@@ -1,0 +1,123 @@
+name: UI Screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/screenshots.yml"
+      - "cmd/**"
+      - "internal/**"
+      - "scripts/capture-screenshots.mjs"
+      - "testdata/**"
+      - "go.mod"
+      - "go.sum"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ui-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    name: Test UI and capture screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Build application
+        run: make build
+
+      - name: Install browser
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Create test configuration
+        run: |
+          mkdir -p test-runtime/exports docs/screenshots
+          cat > test-runtime/config.yaml <<EOF
+          server:
+            listen: "127.0.0.1:8080"
+            base_url: "http://127.0.0.1:8080"
+          dokuwiki:
+            root: "${GITHUB_WORKSPACE}/testdata/dokuwiki"
+            pages_path: "${GITHUB_WORKSPACE}/testdata/dokuwiki/data/pages"
+            media_path: "${GITHUB_WORKSPACE}/testdata/dokuwiki/data/media"
+            base_url: "https://wiki.example.invalid"
+          storage:
+            database: "${GITHUB_WORKSPACE}/test-runtime/migrator.db"
+            work_directory: "${GITHUB_WORKSPACE}/test-runtime"
+            export_directory: "${GITHUB_WORKSPACE}/test-runtime/exports"
+          export:
+            include_mode: "dynamic"
+            preserve_original_source: true
+            include_markdown: true
+            include_html: true
+            include_media: true
+          security:
+            read_only_source: true
+          logging:
+            level: "info"
+          EOF
+
+      - name: Run UI test and capture screenshots
+        env:
+          BASE_URL: http://127.0.0.1:8080
+        run: |
+          ./dist/dokuwiki-confluence-migrator --config test-runtime/config.yaml > test-runtime/server.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent "${BASE_URL}/health" >/dev/null; then
+              break
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              cat test-runtime/server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent --show-error -X POST "${BASE_URL}/api/scans" > test-runtime/scan.json
+          node scripts/capture-screenshots.mjs
+
+      - name: Upload screenshots and diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-screenshots
+          path: |
+            docs/screenshots/*.png
+            test-runtime/scan.json
+            test-runtime/server.log
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Commit refreshed screenshots
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/dashboard.png docs/screenshots/page-detail.png docs/screenshots/plugins.png
+          if git diff --cached --quiet; then
+            echo "Screenshots are unchanged."
+          else
+            git commit -m "docs: refresh UI screenshots"
+            git push origin HEAD:main
+          fi

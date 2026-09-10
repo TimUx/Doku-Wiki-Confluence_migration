@@ -2,7 +2,7 @@
 
 ## Lokale Entwicklung
 
-Benötigt werden Go 1.25.13 oder neuer und GNU Make.
+Benötigt werden Go 1.26.8 oder neuer und GNU Make. Für die lokale Screenshot-Erzeugung werden zusätzlich Node.js 24 und Chromium benötigt.
 
 ```bash
 go mod download

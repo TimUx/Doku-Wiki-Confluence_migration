@@ -10,6 +10,8 @@
 /*.db-wal
 /work/
 /exports/
+/test-runtime/
+/node_modules/
 
 # Editors and operating systems
 .idea/
