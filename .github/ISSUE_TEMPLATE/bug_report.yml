@@ -1,0 +1,37 @@
+name: Fehlerbericht
+description: Einen reproduzierbaren Fehler melden
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Beschreibung
+      description: Was ist passiert und was wurde erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduktion
+      description: Schritte, minimale DokuWiki-Syntax und relevante Konfiguration ohne Geheimnisse
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: v0.1.0 oder Commit-SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Umgebung
+      description: Betriebssystem, Architektur und Go-Version
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevante Logs
+      description: Bitte keine Zugangsdaten oder vertraulichen Wiki-Inhalte einfügen.
+      render: shell

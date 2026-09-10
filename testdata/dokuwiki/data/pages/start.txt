@@ -1,0 +1,3 @@
+====== DokuWiki Migration ======
+
+Willkommen im Test-Wiki. [[betrieb:sap:handbuch|SAP-Handbuch]]

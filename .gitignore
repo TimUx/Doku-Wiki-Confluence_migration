@@ -1,0 +1,23 @@
+# Build and test output
+/dist/
+/coverage.out
+/*.test
+
+# Runtime data and local configuration
+/config.yaml
+/*.db
+/*.db-shm
+/*.db-wal
+/work/
+/exports/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local environment files
+.env
+.env.*
+!.env.example

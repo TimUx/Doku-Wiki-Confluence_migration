@@ -1,0 +1,4 @@
+====== Backup ======
+
+{{:betrieb:sap:architecture.png|Architektur}}
+{{:betrieb:sap:documentation.pdf}}

@@ -1,0 +1,22 @@
+server:
+  listen: "0.0.0.0:8080"
+  base_url: ""
+dokuwiki:
+  root: "/var/lib/dokuwiki"
+  pages_path: "/var/lib/dokuwiki/data/pages"
+  media_path: "/var/lib/dokuwiki/data/media"
+  base_url: "https://wiki.example.local"
+storage:
+  database: "/var/lib/dokuwiki-confluence-migrator/migrator.db"
+  work_directory: "/var/lib/dokuwiki-confluence-migrator"
+  export_directory: "/var/lib/dokuwiki-confluence-migrator/exports"
+export:
+  include_mode: "dynamic"
+  preserve_original_source: true
+  include_markdown: true
+  include_html: true
+  include_media: true
+security:
+  read_only_source: true
+logging:
+  level: "info"
