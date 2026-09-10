@@ -14,13 +14,21 @@ try {
 
   await page.getByRole("button", { name: "Seiten & Namespaces" }).click();
   await page.locator("#pageRows tr").first().waitFor();
-  await page.locator('#pageRows tr[data-id="betrieb:sap:handbuch"]').click();
-  await page.locator("#detail > h2").filter({ hasText: "Überschrift" }).waitFor();
+  await page.locator("#pageRows tr").filter({ hasText: "SAP Betriebshandbuch" }).click();
+  const detailHeading = page.locator("#detail > h2");
+  await detailHeading.waitFor();
+  const detailTitle = (await detailHeading.textContent())?.trim();
+  if (detailTitle !== "SAP Betriebshandbuch") {
+    throw new Error(`Unexpected detail title: ${detailTitle ?? "missing"}`);
+  }
   await page.screenshot({ path: "docs/screenshots/page-detail.png", fullPage: true });
 
   await page.getByRole("button", { name: "Plugin-Inventar" }).click();
   await page.locator("#pluginRows tr").first().waitFor();
   await page.screenshot({ path: "docs/screenshots/plugins.png", fullPage: true });
+} catch (error) {
+  await page.screenshot({ path: "test-runtime/ui-failure.png", fullPage: true });
+  throw error;
 } finally {
   await browser.close();
 }
