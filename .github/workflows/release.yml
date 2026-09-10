@@ -47,7 +47,7 @@ jobs:
           sha256sum dokuwiki-confluence-migrator-linux-* > SHA256SUMS
 
       - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-${{ github.ref_name }}
           path: dist/
