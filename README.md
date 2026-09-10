@@ -21,7 +21,7 @@ Eigenständig laufende Go-Webanwendung zur read-only Analyse eines DokuWiki und 
 
 ## Voraussetzungen und Build
 
-Go 1.24 oder neuer wird nur zum Bauen benötigt. Die fertige Binary benötigt weder Go, Node.js noch einen externen Web- oder Datenbankserver.
+Go 1.25.13 oder neuer wird nur zum Bauen benötigt. Die fertige Binary benötigt weder Go, Node.js noch einen externen Web- oder Datenbankserver.
 
 ```bash
 go mod download

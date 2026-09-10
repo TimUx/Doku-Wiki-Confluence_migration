@@ -2,7 +2,7 @@
 
 ## Lokale Entwicklung
 
-Benötigt werden Go 1.24 oder neuer und GNU Make.
+Benötigt werden Go 1.25.13 oder neuer und GNU Make.
 
 ```bash
 go mod download

@@ -20,10 +20,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -32,7 +32,7 @@ jobs:
         run: go mod download
 
       - name: Verify module files
-        run: go mod tidy && git diff --exit-code -- go.mod go.sum
+        run: go mod tidy -diff
 
       - name: Vet
         run: make vet
@@ -44,7 +44,7 @@ jobs:
         run: make build
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.out
@@ -52,7 +52,7 @@ jobs:
           retention-days: 14
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dokuwiki-confluence-migrator-linux-amd64
           path: dist/dokuwiki-confluence-migrator
