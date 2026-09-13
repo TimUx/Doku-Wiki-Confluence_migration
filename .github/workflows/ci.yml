@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -18,21 +19,30 @@ jobs:
     name: Test, Vet & Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Download modules
+      - name: Download dependencies
         run: go mod download
 
-      - name: Verify module files
+      - name: Check go.mod / go.sum
         run: go mod tidy -diff
+
+      - name: Check formatting
+        run: |
+          test -z "$(gofmt -l .)" || {
+            echo "The following Go files are not formatted:"
+            gofmt -l .
+            exit 1
+          }
 
       - name: Vet
         run: make vet
@@ -51,7 +61,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload binary
+      - name: Upload Linux binary
         uses: actions/upload-artifact@v7
         with:
           name: dokuwiki-confluence-migrator-linux-amd64
