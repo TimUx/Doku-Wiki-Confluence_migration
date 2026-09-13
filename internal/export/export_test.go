@@ -39,7 +39,7 @@ func TestCreateEndToEnd(t *testing.T) {
 		Namespace:  "server",
 		Title:      "Backup",
 		SourceFile: "server/backup.txt",
-		Source: "====== Backup ======\n\nEin Test für den Export.\n\n{{:images:backup-schema.png|Backup Schema}}\n\n{{page>server:restore}}\n",
+		Source:     "====== Backup ======\n\nEin Test für den Export.\n\n{{:images:backup-schema.png|Backup Schema}}\n\n{{page>server:restore}}\n",
 		Modified:   time.Now(),
 		Nodes: []model.Node{
 			{Type: "heading", Text: "Backup", Level: "1"},
@@ -83,25 +83,14 @@ func TestCreateEndToEnd(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		data, err := os.ReadFile(filepath.Join(root, "nonexistent"))
-		_ = data
-		if err == nil {
-			_ = content.Close()
-		}
-		_ = content.Close()
-	}
 
-	for _, f := range r.File {
-		content, err := f.Open()
-		if err != nil {
-			t.Fatal(err)
-		}
 		buf := new(strings.Builder)
 		_, err = buf.ReadFrom(content)
 		_ = content.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		files[f.Name] = buf.String()
 	}
 
@@ -132,6 +121,10 @@ func TestCreateEndToEnd(t *testing.T) {
 		t.Errorf("Confluence storage format does not reference the exported attachment name")
 	}
 
+	if !strings.Contains(storage, "[DOKUWIKI INCLUDE: server:restore]") {
+		t.Errorf("Confluence storage format does not preserve the include placeholder")
+	}
+
 	includes := files["pages/001_Backup/includes.csv"]
 	if !strings.Contains(includes, "server:restore") || !strings.Contains(includes, "[DOKUWIKI INCLUDE: server:restore]") {
 		t.Errorf("include manifest does not contain the expected placeholder")
@@ -142,8 +135,8 @@ func TestCreateEndToEnd(t *testing.T) {
 		t.Errorf("attachment manifest does not contain the expected mapping")
 	}
 
-	if strings.Contains(storage, "server:restore") {
-		t.Errorf("Confluence storage output unexpectedly resolved the include target")
+	if strings.Contains(storage, "ac:name=\"include\"") {
+		t.Errorf("Confluence storage output unexpectedly created an Include Page macro")
 	}
 
 	for _, f := range r.File {
