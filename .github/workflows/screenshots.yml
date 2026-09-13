@@ -1,20 +1,16 @@
 name: UI Screenshots
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - ".github/workflows/screenshots.yml"
-      - "cmd/**"
-      - "internal/**"
-      - "scripts/capture-screenshots.mjs"
-      - "testdata/**"
-      - "go.mod"
-      - "go.sum"
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ui-screenshots-${{ github.ref }}
@@ -22,26 +18,30 @@ concurrency:
 
 jobs:
   screenshots:
-    name: Test UI and capture screenshots
+    name: UI Screenshots
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
+      - name: Download dependencies
+        run: go mod download
 
       - name: Build application
         run: make build
+
+      # ---------------------------------------------------------
+      # Ab hier den bestehenden Browser-/Screenshot-Teil
+      # deines bisherigen Workflows weiterverwenden.
+      # ---------------------------------------------------------
 
       - name: Install browser
         run: |
