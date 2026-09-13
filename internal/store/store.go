@@ -30,33 +30,41 @@ CREATE TABLE IF NOT EXISTS migration_pages(migration_id INTEGER,page_id TEXT,sta
 	}
 	return s, nil
 }
+
 func (s *Store) Close() error { return s.db.Close() }
+
 func (s *Store) Replace(pages []model.Page, media []model.Media, warnings int) error {
 	tx, e := s.db.Begin()
 	if e != nil {
 		return e
 	}
 	defer tx.Rollback()
+
 	if _, e = tx.Exec("DELETE FROM pages; DELETE FROM media"); e != nil {
 		return e
 	}
+
 	for _, p := range pages {
 		b, _ := json.Marshal(p)
 		if _, e = tx.Exec("INSERT INTO pages VALUES(?,?,?,?,?,?,?)", p.ID, p.Namespace, p.Title, p.SourceFile, p.Size, p.Modified.Format(time.RFC3339Nano), b); e != nil {
 			return e
 		}
 	}
+
 	for _, m := range media {
 		if _, e = tx.Exec("INSERT INTO media VALUES(?,?,?,?)", m.ID, m.Path, m.Size, m.Modified.Format(time.RFC3339Nano)); e != nil {
 			return e
 		}
 	}
+
 	_, e = tx.Exec("INSERT INTO scans(started,finished,pages,media,warnings) VALUES(?,?,?,?,?)", time.Now().Format(time.RFC3339), time.Now().Format(time.RFC3339), len(pages), len(media), warnings)
 	if e != nil {
 		return e
 	}
+
 	return tx.Commit()
 }
+
 func (s *Store) Pages(q string) ([]model.Page, error) {
 	query := "SELECT document FROM pages"
 	args := []any{}
@@ -66,11 +74,13 @@ func (s *Store) Pages(q string) ([]model.Page, error) {
 		args = []any{v, v, v, v}
 	}
 	query += " ORDER BY id"
+
 	rows, e := s.db.Query(query, args...)
 	if e != nil {
 		return nil, e
 	}
 	defer rows.Close()
+
 	var out []model.Page
 	for rows.Next() {
 		var b []byte
@@ -83,8 +93,10 @@ func (s *Store) Pages(q string) ([]model.Page, error) {
 		}
 		out = append(out, p)
 	}
+
 	return out, rows.Err()
 }
+
 func (s *Store) Page(id string) (model.Page, error) {
 	var b []byte
 	e := s.db.QueryRow("SELECT document FROM pages WHERE id=?", id).Scan(&b)
@@ -94,6 +106,7 @@ func (s *Store) Page(id string) (model.Page, error) {
 	}
 	return p, e
 }
+
 func (s *Store) Status() map[string]any {
 	var pages, media int
 	_ = s.db.QueryRow("SELECT count(*) FROM pages").Scan(&pages)
@@ -102,6 +115,7 @@ func (s *Store) Status() map[string]any {
 	_ = s.db.QueryRow("SELECT finished FROM scans ORDER BY id DESC LIMIT 1").Scan(&scan)
 	return map[string]any{"pages": pages, "media": media, "lastScan": scan.String}
 }
+
 func (s *Store) MediaPath(id string) (string, error) {
 	var p string
 	e := s.db.QueryRow("SELECT path FROM media WHERE id=?", id).Scan(&p)
@@ -110,6 +124,13 @@ func (s *Store) MediaPath(id string) (string, error) {
 	}
 	return p, nil
 }
-func (s *Store) RecordExport(path string, pages int) {
-	_, _ = s.db.Exec("INSERT INTO exports(created,path,pages) VALUES(?,?,?)", time.Now().Format(time.RFC3339), path, pages)
+
+func (s *Store) RecordExport(path string, pages int) error {
+	_, err := s.db.Exec(
+		"INSERT INTO exports(created,path,pages) VALUES(?,?,?)",
+		time.Now().Format(time.RFC3339),
+		path,
+		pages,
+	)
+	return err
 }
