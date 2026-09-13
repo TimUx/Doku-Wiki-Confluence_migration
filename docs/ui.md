@@ -1,21 +1,65 @@
-# Weboberfläche und automatische Screenshots
+# Weboberfläche und automatische Dokumentations-Screenshots
 
-Die Screenshots werden nicht manuell gepflegt. Der Workflow `UI Screenshots` baut die Anwendung, startet eine isolierte Testinstanz mit `testdata/dokuwiki`, führt einen read-only Scan aus und öffnet die Oberfläche in einem Headless-Chromium-Browser.
+Die Screenshots werden nicht manuell gepflegt. Der Workflow `UI Screenshots` baut die Anwendung, startet eine isolierte Testinstanz mit `testdata/dokuwiki`, führt einen read-only Scan aus und öffnet die Oberfläche in Headless Chromium.
 
-## Migrationsübersicht
+Die Bilder bilden bewusst den **kompletten Benutzerablauf** ab und werden direkt aus der tatsächlich laufenden Anwendung erzeugt. Dadurch bleiben User-Guide und UI-Dokumentation synchron zur aktuellen Oberfläche.
 
-![Migrationsübersicht mit Testdaten](screenshots/dashboard.png)
+## Screenshot-Satz
 
-## Seitenansicht
+### 01 – Migrationsübersicht
 
-![Seitendetail mit Vorschau](screenshots/page-detail.png)
+![Migrationsübersicht mit Testdaten](screenshots/01-dashboard.png)
 
-## Plugin-Inventar
+Startpunkt des Migrationsprozesses. Die Ansicht zeigt Scan-Status, Seiten-/Medienbestand und die vier Schritte des Migrationsassistenten.
 
-![Plugin-Inventar](screenshots/plugins.png)
+### 02 – Seiten und Namespaces
 
-Der Workflow speichert die drei PNG-Dateien außerdem als Actions-Artefakt und aktualisiert sie auf `main`, wenn sich die Darstellung geändert hat. Der Screenshot-Commit löst wegen der gesetzten Pfadfilter keinen weiteren Screenshot-Lauf aus.
+![Seiten und Namespaces](screenshots/02-pages.png)
 
-Schlägt eine Browserprüfung fehl, wird nach Möglichkeit zusätzlich `ui-failure.png` aufgenommen. Zusammen mit `server.log` und `scan.json` wird die Datei auch bei einem fehlgeschlagenen Lauf als Diagnose-Artefakt hochgeladen.
+Zeigt Suche, Seitenliste, Namespaces sowie Includes und Warnungen pro Seite.
 
-Falls der direkte Bot-Push durch Branch-Schutz blockiert wird, muss unter **Settings → Actions → General → Workflow permissions** Schreibzugriff erlaubt und die Branch-Regel für den GitHub-Actions-Bot passend konfiguriert werden. Alternativ können die PNG-Dateien aus dem Workflow-Artefakt manuell übernommen werden.
+### 03 – Auswahl
+
+![Ausgewählte Seite und Migrationsassistent](screenshots/03-selection.png)
+
+Zeigt die explizite Seitenauswahl und die daraus berechnete Zusammenfassung.
+
+### 04 – Migrationsprüfung
+
+![Für die Migration vorbereitete Seite](screenshots/04-migration-preview.png)
+
+Zeigt die Migration-Ansicht einer ausgewählten Seite. Hier wird sichtbar, dass Medien als Attachment-Referenzen vorbereitet und Includes als Platzhalter behandelt werden.
+
+### 05 – Export
+
+![Export vorbereiten](screenshots/05-export.png)
+
+Zeigt den letzten Schritt des Assistenten vor dem Erzeugen des ZIP-Exports.
+
+### 06 – Plugin-Inventar
+
+![Plugin-Inventar](screenshots/06-plugins.png)
+
+Zeigt die erkannten Plugins sowie deren Vorkommen und Unterstützungsstatus.
+
+## Automatischer Ablauf
+
+Der Screenshot-Test:
+
+1. baut die aktuelle Binary,
+2. startet eine isolierte Testinstanz,
+3. führt einen Testscan aus,
+4. öffnet die Oberfläche mit Chromium,
+5. durchläuft die relevanten UI-Schritte,
+6. prüft erwartete Seitentitel und UI-Zustände,
+7. speichert sechs PNG-Dateien,
+8. lädt die Bilder als Actions-Artefakt hoch und
+9. aktualisiert die Bilder auf `main`, wenn sie sich geändert haben.
+
+Bei einem Fehler wird zusätzlich `ui-failure.png` erstellt. Zusammen mit `server.log` und `scan.json` wird dies als Diagnose-Artefakt bereitgestellt.
+
+Der Workflow benötigt `contents: write`, weil er die automatisch erzeugten Dokumentationsbilder direkt nach `main` zurückschreibt. Der Bot-Push löst keinen weiteren Screenshot-Lauf aus, sodass keine Endlosschleife entsteht.
+
+## Ziel der Tests
+
+Die Screenshots sind gleichzeitig eine leichte End-to-End-Prüfung der wichtigsten UI-Pfade. Sie ersetzen keine fachlichen Tests, stellen aber sicher, dass die dokumentierten Kernschritte weiterhin erreichbar und visuell nutzbar sind.
