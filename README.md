@@ -55,8 +55,10 @@ Kopiere `config.example.yaml` nach `config.yaml` und passe die absoluten DokuWik
 1. „Wiki scannen“ aktualisiert den SQLite-Index.
 2. Seiten lassen sich nach ID, Titel, Namespace oder Inhalt suchen.
 3. Vorschau, Source, Includes, Medien, Plugins und Warnungen werden geprüft.
-4. Ausgewählte Seiten werden inklusive Include-Abhängigkeiten und Originalmedien als ZIP exportiert.
-5. HTML/Markdown und Attachments werden kontrolliert in Confluence übernommen; der Status wird anhand des Reports nachvollzogen.
+4. Ausgewählte Seiten werden als kontrolliertes ZIP mit Originalmedien und vorbereiteten Confluence-Referenzen exportiert.
+5. Die exportierten Dateien werden anhand der enthaltenen Migrationsanleitung in Confluence übernommen.
+
+Eine vollständige bebilderte Schritt-für-Schritt-Anleitung steht in **[docs/user-guide.md](docs/user-guide.md)**.
 
 ## DokuWiki-Struktur
 
@@ -95,7 +97,7 @@ Die Anwendung ist kein Ersatz für ein DokuWiki-Backup. Vor dem ersten Produktiv
 
 - `.github/workflows/ci.yml` prüft jeden Push und Pull Request.
 - `.github/workflows/security.yml` prüft Go-Abhängigkeiten mit `govulncheck`.
-- `.github/workflows/screenshots.yml` startet eine Testinstanz, prüft die UI mit Chromium und aktualisiert die Dokumentationsbilder.
+- `.github/workflows/screenshots.yml` startet eine Testinstanz, prüft die UI mit Chromium und aktualisiert die sechs Dokumentationsbilder für den User-Guide.
 - `.github/workflows/release.yml` baut Linux-Artefakte und SHA-256-Prüfsummen für Tags wie `v0.1.0`.
 - Dependabot schlägt Aktualisierungen für Go-Module und GitHub Actions vor.
 
@@ -105,16 +107,24 @@ Weitere Hinweise stehen in [CONTRIBUTING.md](CONTRIBUTING.md) und [SECURITY.md](
 
 ## Screenshots
 
-Die folgenden Bilder werden vom GitHub-Workflow mit dem fiktiven Wiki unter `testdata/dokuwiki` erzeugt. Details zum Ablauf stehen in [docs/ui.md](docs/ui.md).
+Die folgenden Bilder werden automatisch vom GitHub-Workflow mit dem fiktiven Wiki unter `testdata/dokuwiki` erzeugt. Die vollständige Schritt-für-Schritt-Erklärung steht in [docs/user-guide.md](docs/user-guide.md).
 
 ### Migrationsübersicht
 
-![Migrationsübersicht mit Testdaten](docs/screenshots/dashboard.png)
+![Migrationsübersicht mit Testdaten](docs/screenshots/01-dashboard.png)
 
-### Seitendetail
+### Seiten und Auswahl
 
-![Seitendetail mit Vorschau](docs/screenshots/page-detail.png)
+![Seitenliste](docs/screenshots/02-pages.png)
+
+![Ausgewählte Seite und Migrationsassistent](docs/screenshots/03-selection.png)
+
+### Migrationsprüfung und Export
+
+![Für die Migration vorbereitete Seite](docs/screenshots/04-migration-preview.png)
+
+![Export vorbereiten](docs/screenshots/05-export.png)
 
 ### Plugin-Inventar
 
-![Plugin-Inventar](docs/screenshots/plugins.png)
+![Plugin-Inventar](docs/screenshots/06-plugins.png)
