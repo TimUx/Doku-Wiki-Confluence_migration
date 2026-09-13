@@ -41,7 +41,7 @@ try {
   if (detailTitle !== "SAP Betriebshandbuch") {
     throw new Error(`Unexpected detail title: ${detailTitle ?? "missing"}`);
   }
-  await page.getByRole("button", { name: "Migration" }).click();
+  await page.getByRole("button", { name: "Migration", exact: true }).click();
   await page.screenshot({ path: "docs/screenshots/04-migration-preview.png", fullPage: true });
 
   const exportButton = page.getByRole("button", { name: "Export vorbereiten →" });
