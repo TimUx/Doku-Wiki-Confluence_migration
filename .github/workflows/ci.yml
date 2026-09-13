@@ -33,16 +33,18 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Check go.mod / go.sum
+      - name: Verify go.mod and go.sum
         run: go mod tidy -diff
 
-      - name: Check formatting
+      - name: Check Go formatting
+        shell: bash
         run: |
-          test -z "$(gofmt -l .)" || {
+          files="$(gofmt -l .)"
+          if [ -n "$files" ]; then
             echo "The following Go files are not formatted:"
-            gofmt -l .
+            echo "$files"
             exit 1
-          }
+          fi
 
       - name: Vet
         run: make vet
