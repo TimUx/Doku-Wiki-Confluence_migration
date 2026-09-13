@@ -12,6 +12,8 @@ import (
 
 var confluenceMedia = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]+))?\s*\}\}`)
 var confluenceLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
+var confluenceBold = regexp.MustCompile(`\*\*(.+?)\*\*`)
+var confluenceItalic = regexp.MustCompile(`//(.+?)//`)
 
 // AttachmentNames maps DokuWiki media targets to the exact filenames used in the export.
 func AttachmentNames(p model.Page) map[string]string {
@@ -26,11 +28,8 @@ func AttachmentNames(p model.Page) map[string]string {
             if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || strings.ContainsRune("._-", r) { b.WriteRune(r) } else { b.WriteByte('_') }
         }
         name = b.String()
-        used[strings.ToLower(name)]++
-        if used[strings.ToLower(name)] > 1 {
-            ext := filepath.Ext(name)
-            name = strings.TrimSuffix(name, ext) + fmt.Sprintf("_%d", used[strings.ToLower(name)]) + ext
-        }
+        key := strings.ToLower(name); used[key]++
+        if used[key] > 1 { ext := filepath.Ext(name); name = strings.TrimSuffix(name, ext) + fmt.Sprintf("_%d", used[key]) + ext }
         out[ref.Target] = name
     }
     return out
@@ -70,7 +69,9 @@ func storageInline(s string, p model.Page, attachments map[string]string) string
         if strings.Contains(m[1], "://") || strings.HasPrefix(m[1], "mailto:") { return fmt.Sprintf(`<a href="%s">%s</a>`, html.EscapeString(m[1]), html.EscapeString(label)) }
         return fmt.Sprintf(`<span>[DOKUWIKI LINK: %s]</span>`, html.EscapeString(m[1]))
     })
-    return strings.ReplaceAll(strings.ReplaceAll(out, "**", "<strong>"), "//", "<em>")
+    out = confluenceBold.ReplaceAllString(out, `<strong>$1</strong>`)
+    out = confluenceItalic.ReplaceAllString(out, `<em>$1</em>`)
+    return out
 }
 
 func resolveTarget(current, target string) string {
