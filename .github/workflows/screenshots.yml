@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ui-screenshots-${{ github.ref }}
@@ -37,11 +37,6 @@ jobs:
 
       - name: Build application
         run: make build
-
-      # ---------------------------------------------------------
-      # Ab hier den bestehenden Browser-/Screenshot-Teil
-      # deines bisherigen Workflows weiterverwenden.
-      # ---------------------------------------------------------
 
       - name: Install browser
         run: |
