@@ -2,9 +2,11 @@ name: Security
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
@@ -17,22 +19,25 @@ jobs:
     name: Go Vulnerability Check
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Install govulncheck
-        env:
-          GOTOOLCHAIN: local
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Download dependencies
+        run: go mod download
 
-      - name: Scan Go packages
+      - name: Verify modules
+        run: go mod verify
+
+      - name: Run govulncheck
         env:
           GOTOOLCHAIN: local
-        run: govulncheck ./...
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
