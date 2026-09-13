@@ -8,7 +8,11 @@ const page = await browser.newPage({
 });
 
 const pageErrors = [];
+const consoleErrors = [];
 page.on("pageerror", (error) => pageErrors.push(error));
+page.on("console", (message) => {
+  if (message.type() === "error") consoleErrors.push(message.text());
+});
 
 try {
   await page.goto(baseURL, { waitUntil: "networkidle" });
@@ -24,7 +28,9 @@ try {
   await page.getByText("1 ausgewählt", { exact: true }).waitFor();
   await page.screenshot({ path: "docs/screenshots/03-selection.png", fullPage: true });
 
-  await page.getByRole("button", { name: "Prüfung starten →" }).click();
+  const reviewButton = page.getByRole("button", { name: "Prüfung starten →" });
+  await reviewButton.waitFor();
+  await reviewButton.click();
   await page.getByRole("heading", { name: "2 · Übernahme prüfen" }).waitFor();
 
   const detailRow = page.locator("#pageRows tr").filter({ hasText: "SAP Betriebshandbuch" });
@@ -38,7 +44,9 @@ try {
   await page.getByRole("button", { name: "Migration" }).click();
   await page.screenshot({ path: "docs/screenshots/04-migration-preview.png", fullPage: true });
 
-  await page.getByRole("button", { name: "Export vorbereiten →" }).click();
+  const exportButton = page.getByRole("button", { name: "Export vorbereiten →" });
+  await exportButton.waitFor();
+  await exportButton.click();
   await page.getByRole("heading", { name: "3 · Export" }).waitFor();
   await page.screenshot({ path: "docs/screenshots/05-export.png", fullPage: true });
 
@@ -46,13 +54,20 @@ try {
   await page.locator("#pluginRows tr").first().waitFor();
   await page.screenshot({ path: "docs/screenshots/06-plugins.png", fullPage: true });
 
-  if (pageErrors.length) {
-    throw new Error(pageErrors.map((error) => error.message).join("\n"));
+  if (pageErrors.length || consoleErrors.length) {
+    const details = [
+      ...pageErrors.map((error) => error.stack ?? error.message),
+      ...consoleErrors,
+    ].join("\n");
+    throw new Error(`Browser errors detected:\n${details}`);
   }
 } catch (error) {
   await page.screenshot({ path: "test-runtime/ui-failure.png", fullPage: true });
-  if (pageErrors.length) {
-    console.error("Browser page errors:", pageErrors.map((item) => item.stack ?? item.message).join("\n"));
+  if (pageErrors.length || consoleErrors.length) {
+    console.error("Browser errors:", [
+      ...pageErrors.map((item) => item.stack ?? item.message),
+      ...consoleErrors,
+    ].join("\n"));
   }
   throw error;
 } finally {
