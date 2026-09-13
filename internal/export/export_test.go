@@ -2,6 +2,7 @@ package export
 
 import (
 	"archive/zip"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,14 +85,13 @@ func TestCreateEndToEnd(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		buf := new(strings.Builder)
-		_, err = buf.ReadFrom(content)
+		data, err := io.ReadAll(content)
 		_ = content.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		files[f.Name] = buf.String()
+		files[f.Name] = string(data)
 	}
 
 	expectedFiles := []string{
