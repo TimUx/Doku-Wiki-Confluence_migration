@@ -7,6 +7,9 @@ const page = await browser.newPage({
   deviceScaleFactor: 1,
 });
 
+const pageErrors = [];
+page.on("pageerror", (error) => pageErrors.push(error));
+
 try {
   await page.goto(baseURL, { waitUntil: "networkidle" });
   await page.locator("#pagesCount").filter({ hasText: "4" }).waitFor();
@@ -18,10 +21,11 @@ try {
 
   const row = page.locator("#pageRows tr").filter({ hasText: "SAP Betriebshandbuch" });
   await row.locator('input[type="checkbox"]').check();
+  await page.getByText("1 ausgewählt", { exact: true }).waitFor();
   await page.screenshot({ path: "docs/screenshots/03-selection.png", fullPage: true });
 
   await page.getByRole("button", { name: "Prüfung starten →" }).click();
-  await page.locator("#wizardBody").filter({ hasText: "2 · Übernahme prüfen" }).waitFor();
+  await page.getByRole("heading", { name: "2 · Übernahme prüfen" }).waitFor();
 
   const detailRow = page.locator("#pageRows tr").filter({ hasText: "SAP Betriebshandbuch" });
   await detailRow.click();
@@ -35,14 +39,21 @@ try {
   await page.screenshot({ path: "docs/screenshots/04-migration-preview.png", fullPage: true });
 
   await page.getByRole("button", { name: "Export vorbereiten →" }).click();
-  await page.locator("#wizardBody").filter({ hasText: "3 · Export" }).waitFor();
+  await page.getByRole("heading", { name: "3 · Export" }).waitFor();
   await page.screenshot({ path: "docs/screenshots/05-export.png", fullPage: true });
 
   await page.getByRole("button", { name: "Plugin-Inventar" }).click();
   await page.locator("#pluginRows tr").first().waitFor();
   await page.screenshot({ path: "docs/screenshots/06-plugins.png", fullPage: true });
+
+  if (pageErrors.length) {
+    throw new Error(pageErrors.map((error) => error.message).join("\n"));
+  }
 } catch (error) {
   await page.screenshot({ path: "test-runtime/ui-failure.png", fullPage: true });
+  if (pageErrors.length) {
+    console.error("Browser page errors:", pageErrors.map((item) => item.stack ?? item.message).join("\n"));
+  }
   throw error;
 } finally {
   await browser.close();
