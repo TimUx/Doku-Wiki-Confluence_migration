@@ -20,6 +20,9 @@ try {
   await row.locator('input[type="checkbox"]').check();
   await page.screenshot({ path: "docs/screenshots/03-selection.png", fullPage: true });
 
+  await page.getByRole("button", { name: "Prüfung starten →" }).click();
+  await page.locator("#wizardBody").filter({ hasText: "2 · Übernahme prüfen" }).waitFor();
+
   const detailRow = page.locator("#pageRows tr").filter({ hasText: "SAP Betriebshandbuch" });
   await detailRow.click();
   const detailHeading = page.locator("#detail > h2");
