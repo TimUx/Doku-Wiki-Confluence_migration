@@ -11,7 +11,7 @@ import (
 var (
 	heading    = regexp.MustCompile(`^(={2,6})\s*(.*?)\s*(={2,6})\s*$`)
 	link       = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
-	media      = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]+))?\s*\}\}`)
+	media      = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
 	include    = regexp.MustCompile(`(?i)\{\{(?:page|section|include)>\s*([^}&]+)(?:&([^}]+))?\}\}`)
 	pluginOpen = regexp.MustCompile(`(?i)^<([a-z][\w-]*)(?:\s+([^>]*))?>\s*$`)
 	blockOpen  = regexp.MustCompile(`(?i)^<(block|WRAP)\s+([^>]+)>\s*$`)
@@ -25,168 +25,64 @@ func Parse(id, src string) model.Page {
 	for i := 0; i < len(lines); i++ {
 		raw := lines[i]
 		trim := strings.TrimSpace(raw)
-		if trim == "" {
-			continue
-		}
+		if trim == "" { continue }
 		if m := heading.FindStringSubmatch(trim); m != nil && len(m[1]) == len(m[3]) {
 			lvl := 7 - len(m[1])
 			p.Nodes = append(p.Nodes, model.Node{Type: "heading", Text: m[2], Level: strconv.Itoa(lvl)})
-			if p.Title == last(id) {
-				p.Title = m[2]
-			}
+			if p.Title == last(id) { p.Title = m[2] }
 			continue
 		}
 		if strings.HasPrefix(trim, "<code") || strings.HasPrefix(trim, "<file") {
-			end := "</code>"
-			if strings.HasPrefix(trim, "<file") {
-				end = "</file>"
-			}
-			var b []string
-			i++
-			for i < len(lines) && !strings.Contains(lines[i], end) {
-				b = append(b, lines[i])
-				i++
-			}
-			p.Nodes = append(p.Nodes, model.Node{Type: "code", Text: strings.Join(b, "\n")})
-			continue
+			end := "</code>"; if strings.HasPrefix(trim, "<file") { end = "</file>" }
+			var b []string; i++
+			for i < len(lines) && !strings.Contains(lines[i], end) { b = append(b, lines[i]); i++ }
+			p.Nodes = append(p.Nodes, model.Node{Type: "code", Text: strings.Join(b, "\n")}); continue
 		}
 		if m := blockOpen.FindStringSubmatch(trim); m != nil {
-			plugin := strings.ToLower(m[1])
-			kind := strings.ToLower(strings.Fields(m[2])[0])
-			end := "</" + m[1] + ">"
-			var b []string
-			i++
-			for i < len(lines) && !strings.EqualFold(strings.TrimSpace(lines[i]), end) {
-				b = append(b, lines[i])
-				i++
-			}
-			typ := "note"
-			if kind == "important" || strings.Contains(kind, "warning") || strings.Contains(kind, "danger") {
-				typ = "warning"
-			} else if kind == "info" || kind == "tip" {
-				typ = "info"
-			}
+			plugin := strings.ToLower(m[1]); fields := strings.Fields(m[2]); kind := "note"; if len(fields) > 0 { kind = strings.ToLower(fields[0]) }
+			end := "</" + m[1] + ">"; var b []string; i++
+			for i < len(lines) && !strings.EqualFold(strings.TrimSpace(lines[i]), end) { b = append(b, lines[i]); i++ }
+			typ := "note"; if kind == "important" || strings.Contains(kind, "warning") || strings.Contains(kind, "danger") { typ = "warning" } else if kind == "info" || kind == "tip" { typ = "info" }
 			p.Plugins = appendUnique(p.Plugins, plugin)
-			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: strings.TrimSpace(strings.Join(b, "\n")), Plugin: plugin, Meta: map[string]string{"kind": kind}})
-			continue
-		}
-		if strings.HasPrefix(strings.ToUpper(trim), "<WRAP ") {
-			kind := strings.TrimSuffix(strings.TrimPrefix(trim, "<WRAP "), ">")
-			var b []string
-			i++
-			for i < len(lines) && !strings.EqualFold(strings.TrimSpace(lines[i]), "</WRAP>") {
-				b = append(b, lines[i])
-				i++
-			}
-			typ := "note"
-			k := strings.ToLower(kind)
-			if strings.Contains(k, "warning") {
-				typ = "warning"
-			} else if strings.Contains(k, "info") || strings.Contains(k, "tip") {
-				typ = "info"
-			}
-			p.Plugins = appendUnique(p.Plugins, "wrap")
-			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: strings.TrimSpace(strings.Join(b, "\n")), Plugin: "wrap"})
-			continue
+			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: strings.TrimSpace(strings.Join(b, "\n")), Plugin: plugin, Meta: map[string]string{"kind": kind}}); continue
 		}
 		if m := include.FindStringSubmatch(trim); m != nil {
-			target := resolve(id, m[1])
-			p.Includes = append(p.Includes, model.Reference{Target: target, Kind: "include"})
-			p.Plugins = appendUnique(p.Plugins, "include")
-			p.Nodes = append(p.Nodes, model.Node{Type: "include", Target: target, Raw: trim})
-			continue
+			target := resolve(id, m[1]); p.Includes = append(p.Includes, model.Reference{Target: target, Kind: "include"}); p.Plugins = appendUnique(p.Plugins, "include"); p.Nodes = append(p.Nodes, model.Node{Type: "include", Target: target, Raw: trim}); continue
 		}
 		if m := pluginOpen.FindStringSubmatch(trim); m != nil {
-			name := strings.ToLower(m[1])
-			if name != "code" && name != "file" {
-				p.Plugins = appendUnique(p.Plugins, name)
-				p.Warnings = append(p.Warnings, model.Warning{Code: "unknown_plugin", Message: "Unsupported plugin: " + name, Raw: trim, Line: i + 1})
-				p.Nodes = append(p.Nodes, model.Node{Type: "unknown_plugin", Plugin: name, Raw: trim})
-				continue
-			}
+			name := strings.ToLower(m[1]); if name != "code" && name != "file" { p.Plugins = appendUnique(p.Plugins, name); p.Warnings = append(p.Warnings, model.Warning{Code: "unknown_plugin", Message: "Unsupported plugin: " + name, Raw: trim, Line: i + 1}); p.Nodes = append(p.Nodes, model.Node{Type: "unknown_plugin", Plugin: name, Raw: trim}); continue }
 		}
-
 		if m := tableRow.FindStringSubmatch(trim); m != nil {
-			sep := string(m[1])
-			body := m[2]
-			if strings.HasSuffix(body, sep) {
-				body = strings.TrimSuffix(body, sep)
-			}
-			parts := strings.Split(body, sep)
-			row := model.Node{Type: "table_row"}
-			for _, part := range parts {
-				cell := strings.TrimSpace(part)
-				if cell == "" {
-					continue
-				}
-				cellType := "table_cell"
-				if sep == "^" {
-					cellType = "table_header"
-				}
-				row.Children = append(row.Children, model.Node{Type: cellType, Text: cell})
-			}
-			if len(row.Children) > 0 {
-				p.Nodes = append(p.Nodes, row)
-				continue
-			}
+			sep := string(m[1]); body := m[2]; if strings.HasSuffix(body, sep) { body = strings.TrimSuffix(body, sep) }; parts := strings.Split(body, sep); row := model.Node{Type: "table_row"}
+			for _, part := range parts { cell := strings.TrimSpace(part); if cell == "" { continue }; cellType := "table_cell"; if sep == "^" { cellType = "table_header" }; row.Children = append(row.Children, model.Node{Type: cellType, Text: cell}) }
+			if len(row.Children) > 0 { p.Nodes = append(p.Nodes, row); continue }
 		}
-
-		for _, m := range link.FindAllStringSubmatch(raw, -1) {
-			kind := "internal"
-			target := m[1]
-			if strings.Contains(target, "://") || strings.HasPrefix(target, "mailto:") {
-				kind = "external"
-			} else {
-				target = resolve(id, target)
-			}
-			p.Links = append(p.Links, model.Reference{Target: target, Display: m[2], Kind: kind})
-		}
-		for _, m := range media.FindAllStringSubmatch(raw, -1) {
-			p.Media = append(p.Media, model.Reference{Target: resolve(id, m[1]), Display: m[2], Kind: "media"})
-		}
-
-		if m := listItem.FindStringSubmatch(raw); m != nil {
-			typ := "bullet_item"
-			if m[1] == "-" {
-				typ = "ordered_item"
-			}
-			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: m[2]})
-			continue
-		}
-		if strings.HasPrefix(trim, ">") {
-			p.Nodes = append(p.Nodes, model.Node{Type: "quote", Text: strings.TrimSpace(strings.TrimPrefix(trim, ">"))})
-			continue
-		}
+		for _, m := range link.FindAllStringSubmatch(raw, -1) { kind := "internal"; target := unescape(m[1]); if strings.Contains(target, "://") || strings.HasPrefix(target, "mailto:") { kind = "external" } else { target = resolve(id, target) }; p.Links = append(p.Links, model.Reference{Target: target, Display: unescape(m[2]), Kind: kind}) }
+		for _, m := range media.FindAllStringSubmatch(raw, -1) { target := normalizeMediaTarget(m[1]); p.Media = append(p.Media, model.Reference{Target: resolve(id, target), Display: unescape(m[2]), Kind: "media"}) }
+		if m := listItem.FindStringSubmatch(raw); m != nil { typ := "bullet_item"; if m[1] == "-" { typ = "ordered_item" }; p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: m[2]}); continue }
+		if strings.HasPrefix(trim, ">") { p.Nodes = append(p.Nodes, model.Node{Type: "quote", Text: strings.TrimSpace(strings.TrimPrefix(trim, ">"))}); continue }
 		p.Nodes = append(p.Nodes, model.Node{Type: "paragraph", Text: trim})
 	}
 	return p
 }
 
+func normalizeMediaTarget(target string) string {
+	target = unescape(strings.TrimSpace(target))
+	if i := strings.Index(target, "fetch.php/"); i >= 0 { target = target[i+len("fetch.php/"):] }
+	return strings.TrimPrefix(target, "/")
+}
+
+func unescape(s string) string {
+	for _, pair := range []struct{ escaped, plain string }{{`\:`, `:`}, {`\_`, `_`}, {`\.`, `.`}, {`\-`, `-`}, {`\+`, `+`}, {`\#`, `#`}, {`\&`, `&`}, {`\?`, `?`}, {`\|`, `|`}, {`\*`, `*`}} { s = strings.ReplaceAll(s, pair.escaped, pair.plain) }
+	return s
+}
+
 func resolve(current, target string) string {
 	target = strings.TrimSpace(target)
-	if strings.HasPrefix(target, ":") {
-		return strings.TrimPrefix(target, ":")
-	}
-	if strings.Contains(target, ":") {
-		return target
-	}
-	i := strings.LastIndex(current, ":")
-	if i < 0 {
-		return target
-	}
-	return current[:i+1] + target
+	if strings.HasPrefix(target, ":") { return strings.TrimPrefix(target, ":") }
+	if strings.Contains(target, ":") { return target }
+	if i := strings.LastIndex(current, ":"); i >= 0 { return current[:i+1] + target }
+	return target
 }
-func last(id string) string {
-	if i := strings.LastIndex(id, ":"); i >= 0 {
-		return id[i+1:]
-	}
-	return id
-}
-func appendUnique(s []string, v string) []string {
-	for _, x := range s {
-		if x == v {
-			return s
-		}
-	}
-	return append(s, v)
-}
+func last(id string) string { if i := strings.LastIndex(id, ":"); i >= 0 { return id[i+1:] }; return id }
+func appendUnique(s []string, v string) []string { for _, x := range s { if x == v { return s } }; return append(s, v) }
