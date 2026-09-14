@@ -19,7 +19,11 @@ func Markdown(p model.Page) string {
 		case "table_row":
 			renderTableMarkdown(&b, p.Nodes, &i)
 		case "code":
-			fmt.Fprintf(&b, "```\n%s\n```\n\n", n.Text)
+			lang := ""
+			if n.Meta != nil {
+				lang = strings.TrimSpace(n.Meta["language"])
+			}
+			fmt.Fprintf(&b, "```%s\n%s\n```\n\n", lang, n.Text)
 		case "include":
 			fmt.Fprintf(&b, "> Include %s: `%s`\n\n", n.Meta["mode"], n.Target)
 		default:
