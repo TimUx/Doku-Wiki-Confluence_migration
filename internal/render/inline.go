@@ -15,6 +15,7 @@ var mono = regexp.MustCompile(`''(.+?)''`)
 var strike = regexp.MustCompile(`~~(.+?)~~`)
 var sub = regexp.MustCompile(`_(\{[^}]+\}|[[:alnum:]])`)
 var sup = regexp.MustCompile(`\^(\{[^}]+\}|[[:alnum:]])`)
+var htmlTag = regexp.MustCompile(`<[^>]*>`)
 var footnote = regexp.MustCompile(`\(\((.+?)\)\)`)
 var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
 var wikiLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
@@ -77,14 +78,28 @@ func previewInline(s, current string) string {
 }
 
 func applySubSupOutsideTags(s string) string {
-	parts := strings.Split(s, "<")
-	if len(parts) == 1 { return sub.ReplaceAllString(s, "<sub>$1</sub>") |> func(v string) string { return sup.ReplaceAllString(v, "<sup>$1</sup>") } }
-	for i := range parts {
-		if i == 0 || !strings.Contains(parts[i], ">") {
-			parts[i] = sup.ReplaceAllString(sub.ReplaceAllString(parts[i], "<sub>$1</sub>"), "<sup>$1</sup>")
-		}
+	matches := htmlTag.FindAllStringIndex(s, -1)
+	if len(matches) == 0 {
+		return applySubSup(s)
 	}
-	return strings.Join(parts, "<")
+	var b strings.Builder
+	last := 0
+	for _, m := range matches {
+		if m[0] > last {
+			b.WriteString(applySubSup(s[last:m[0]]))
+		}
+		b.WriteString(s[m[0]:m[1]])
+		last = m[1]
+	}
+	if last < len(s) {
+		b.WriteString(applySubSup(s[last:]))
+	}
+	return b.String()
+}
+
+func applySubSup(s string) string {
+	s = sub.ReplaceAllString(s, "<sub>$1</sub>")
+	return sup.ReplaceAllString(s, "<sup>$1</sup>")
 }
 
 func normalizeMediaTarget(target string) string {
