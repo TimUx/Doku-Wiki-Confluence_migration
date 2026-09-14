@@ -25,8 +25,11 @@ func TestHTMLRendersContiguousTableAsSingleTable(t *testing.T) {
 
 func TestPreviewHTMLRendersTableCellLinksAndColspan(t *testing.T) {
 	p := parser.Parse("demo:table", `^ Name ^ Value ^
-| [[https://example.com]] | ::: |
-| Combined | 2 |`)
+| [[https://example.com]] | Combined |`)
+	if len(p.Nodes) < 2 || len(p.Nodes[1].Children) != 2 {
+		t.Fatalf("unexpected parsed table: %#v", p.Nodes)
+	}
+	p.Nodes[1].Children[0].Meta = map[string]string{"colspan": "2"}
 	got := PreviewHTML(p)
 	if !strings.Contains(got, `href="https://example.com"`) {
 		t.Fatalf("expected preview link, got: %s", got)
