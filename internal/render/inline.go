@@ -21,6 +21,7 @@ var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}
 var wikiLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 var wrapInline = regexp.MustCompile(`(?is)<(wrap|inline|span)\b([^>]*)>(.*?)</(wrap|inline|span)>`)
 var wrapWidth = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)?(?:%|px|em|rem|vw|vh)$`)
+var lineBreak = regexp.MustCompile(`\\\\`)
 
 func Inline(s string) string {
 	s = html.EscapeString(s)
@@ -31,6 +32,7 @@ func Inline(s string) string {
 	s = strike.ReplaceAllString(s, "<del>$1</del>")
 	s = sub.ReplaceAllString(s, "<sub>$1</sub>")
 	s = sup.ReplaceAllString(s, "<sup>$1</sup>")
+	s = lineBreak.ReplaceAllString(s, "<br/>")
 	return s
 }
 
@@ -74,6 +76,7 @@ func previewInline(s, current string) string {
 	out = mono.ReplaceAllString(out, "<code>$1</code>")
 	out = strike.ReplaceAllString(out, "<del>$1</del>")
 	out = applySubSupOutsideTags(out)
+	out = lineBreak.ReplaceAllString(out, "<br/>")
 	return out
 }
 
