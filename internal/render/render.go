@@ -12,7 +12,7 @@ import (
 
 var bold = regexp.MustCompile(`\*\*(.+?)\*\*`)
 var italic = regexp.MustCompile(`//(.+?)//`)
-var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]+))?\s*\}\}`)
+var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*) )?\s*\}\}`)
 
 func Inline(s string) string {
 	s = html.EscapeString(s)
@@ -85,37 +85,89 @@ func HTML(p model.Page) string {
 	return b.String()
 }
 
-// PreviewHTML is the browser preview variant of HTML. It resolves DokuWiki
-// media references to the application's read-only media endpoint while
-// keeping the export HTML independent from the running application.
+// PreviewHTML renders the page for the browser preview and resolves DokuWiki
+// media references through the application's read-only media endpoint.
 func PreviewHTML(p model.Page) string {
-	out := HTML(p)
-	return media.ReplaceAllStringFunc(out, func(raw string) string {
-		m := media.FindStringSubmatch(raw)
+	var b strings.Builder
+	for i := 0; i < len(p.Nodes); i++ {
+		n := p.Nodes[i]
+		switch n.Type {
+		case "heading":
+			fmt.Fprintf(&b, "<h%s>%s</h%s>", n.Level, previewInline(n.Text, p.ID), n.Level)
+		case "paragraph":
+			fmt.Fprintf(&b, "<p>%s</p>", previewInline(n.Text, p.ID))
+		case "bullet_item", "ordered_item":
+			ordered := n.Type == "ordered_item"
+			tag := "ul"
+			if ordered {
+				tag = "ol"
+			}
+			fmt.Fprintf(&b, "<%s>", tag)
+			for i < len(p.Nodes) && p.Nodes[i].Type == n.Type {
+				fmt.Fprintf(&b, "<li>%s</li>", previewInline(p.Nodes[i].Text, p.ID))
+				i++
+			}
+			b.WriteString("</" + tag + ">")
+			i--
+		case "table_row":
+			b.WriteString(`<table class="dokuwiki-table"><tbody>`)
+			for i < len(p.Nodes) && p.Nodes[i].Type == "table_row" {
+				b.WriteString("<tr>")
+				for _, cell := range p.Nodes[i].Children {
+					tag := "td"
+					if cell.Type == "table_header" {
+						tag = "th"
+					}
+					fmt.Fprintf(&b, "<%s>%s</%s>", tag, previewInline(cell.Text, p.ID), tag)
+				}
+				b.WriteString("</tr>")
+				i++
+			}
+			b.WriteString("</tbody></table>")
+			i--
+		case "quote":
+			fmt.Fprintf(&b, "<blockquote>%s</blockquote>", previewInline(n.Text, p.ID))
+		case "code":
+			fmt.Fprintf(&b, "<pre><code>%s</code></pre>", html.EscapeString(n.Text))
+		case "info", "warning", "note":
+			class := "hint " + n.Type
+			title := strings.ToUpper(n.Type)
+			if n.Meta != nil && n.Meta["kind"] == "important" {
+				title = "WICHTIG"
+			}
+			b.WriteString(`<aside class="` + class + `"><div class="hint-title">` + title + `</div><div class="hint-body">`)
+			for _, line := range strings.Split(strings.TrimSpace(n.Text), "\n") {
+				if strings.TrimSpace(line) != "" {
+					fmt.Fprintf(&b, "<p>%s</p>", previewInline(strings.TrimSpace(line), p.ID))
+				}
+			}
+			b.WriteString("</div></aside>")
+		case "include":
+			fmt.Fprintf(&b, "<div class=\"include\">Include Page: %s</div>", html.EscapeString(n.Target))
+		case "unknown_plugin":
+			fmt.Fprintf(&b, "<div class=\"unsupported\"><strong>Unsupported plugin: %s</strong><pre>%s</pre></div>", html.EscapeString(n.Plugin), html.EscapeString(n.Raw))
+		}
+	}
+	return b.String()
+}
+
+func previewInline(s, current string) string {
+	out := html.EscapeString(s)
+	out = media.ReplaceAllStringFunc(out, func(raw string) string {
+		m := media.FindStringSubmatch(html.UnescapeString(raw))
 		if len(m) == 0 {
 			return raw
 		}
-		target := resolveTarget(p.ID, m[1])
+		target := resolveTarget(current, m[1])
 		label := m[2]
 		if label == "" {
 			label = target
 		}
 		return fmt.Sprintf(`<img class="dokuwiki-media" src="/api/media?target=%s" alt="%s" title="%s">`, url.QueryEscape(target), html.EscapeString(label), html.EscapeString(label))
 	})
-}
-
-func resolveTarget(current, target string) string {
-	target = strings.TrimSpace(target)
-	if strings.HasPrefix(target, ":") {
-		return strings.TrimPrefix(target, ":")
-	}
-	if strings.Contains(target, ":") {
-		return target
-	}
-	if i := strings.LastIndex(current, ":"); i >= 0 {
-		return current[:i+1] + target
-	}
-	return target
+	out = bold.ReplaceAllString(out, "<strong>$1</strong>")
+	out = italic.ReplaceAllString(out, "<em>$1</em>")
+	return out
 }
 
 func Markdown(p model.Page) string {
