@@ -2,13 +2,11 @@ package render
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model"
 )
 
-var lineBreak = regexp.MustCompile(`\\\\(\\s|$)`)
 
 func Markdown(p model.Page) string {
 	var b strings.Builder
