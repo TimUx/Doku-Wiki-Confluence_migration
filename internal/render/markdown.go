@@ -7,7 +7,6 @@ import (
 	"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model"
 )
 
-
 func Markdown(p model.Page) string {
 	var b strings.Builder
 	for i := 0; i < len(p.Nodes); i++ {
@@ -35,10 +34,27 @@ func Markdown(p model.Page) string {
 }
 
 func markdownInline(s string) string {
-	s = sub.ReplaceAllString(s, "<sub>$1</sub>")
-	s = sup.ReplaceAllString(s, "<sup>$1</sup>")
-	s = lineBreak.ReplaceAllString(s, "<br/>$1")
-	return s
+	protected, spans := protectNoFormat(s)
+	protected = sub.ReplaceAllString(protected, "<sub>$1</sub>")
+	protected = sup.ReplaceAllString(protected, "<sup>$1</sup>")
+	protected = lineBreak.ReplaceAllString(protected, "<br/>")
+	for _, span := range spans {
+		text := escapeMarkdownLiteral(span.text)
+		protected = strings.ReplaceAll(protected, span.token, text)
+	}
+	return protected
+}
+
+func escapeMarkdownLiteral(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\\', '`', '*', '_', '[', ']', '<', '>', '#':
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 func renderTableMarkdown(b *strings.Builder, nodes []model.Node, i *int) {
