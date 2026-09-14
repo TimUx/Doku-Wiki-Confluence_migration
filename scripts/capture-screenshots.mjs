@@ -21,9 +21,18 @@ try {
 
   await page.getByRole("button", { name: "Seiten & Namespaces" }).click();
   await page.locator("#pageTree .page-row").first().waitFor();
+
+  // Expand the namespace hierarchy before selecting a nested page.
+  const collapsedNamespaces = page.locator(
+    '#pageTree .folder-row .tree-toggle[aria-label="Namespace aufklappen"]',
+  );
+  while (await collapsedNamespaces.count()) {
+    await collapsedNamespaces.first().click();
+  }
   await page.screenshot({ path: "docs/screenshots/02-pages.png", fullPage: true });
 
   const row = page.locator("#pageTree .page-row").filter({ hasText: "SAP Betriebshandbuch" });
+  await row.waitFor();
   await row.locator('input[type="checkbox"]').check();
   await page.getByText("1 ausgewählt", { exact: true }).waitFor();
   await page.screenshot({ path: "docs/screenshots/03-selection.png", fullPage: true });
