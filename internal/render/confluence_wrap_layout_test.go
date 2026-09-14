@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model"
+	"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/parser"
 )
 
 func TestConfluenceStorageRendersWrapGroupColumnsWidthsAndAlignment(t *testing.T) {
@@ -51,7 +52,7 @@ Right
 </WRAP>
 </WRAP>
 <WRAP clear />`
-	p := parseForWrapLayoutTest(src)
+	p := parser.Parse("layout", src)
 	got := ConfluenceStorage(p)
 
 	if !strings.Contains(got, `<ac:structured-macro ac:name="section">`) {
@@ -72,8 +73,4 @@ Right
 	if !strings.Contains(got, `<div style="clear:both;"></div>`) {
 		t.Fatalf("clear layout marker missing: %s", got)
 	}
-}
-
-func parseForWrapLayoutTest(src string) model.Page {
-	return parseForWrapLayoutSource(src)
 }
