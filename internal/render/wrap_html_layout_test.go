@@ -15,7 +15,7 @@ Left
 <WRAP column 50% center>
 Center
 </WRAP>
-<WRAP column width=25% align=right>
+<WRAP column 25% right>
 Right
 </WRAP>
 </WRAP>`
@@ -28,7 +28,7 @@ Right
 	for _, want := range []string{
 		`class="dokuwiki-wrap column left" style="width:25%;text-align:left;"`,
 		`class="dokuwiki-wrap column center" style="width:50%;text-align:center;"`,
-		`class="dokuwiki-wrap column" style="width:25%;text-align:right;"`,
+		`class="dokuwiki-wrap column right" style="width:25%;text-align:right;"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("column layout missing %q: %s", want, got)
