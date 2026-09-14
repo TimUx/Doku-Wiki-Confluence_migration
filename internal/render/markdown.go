@@ -1,6 +1,9 @@
 package render
 
+var lineBreak = regexp.MustCompile(`\\\\(\\s|$)`)
+
 import (
+	"regexp"
 	"fmt"
 	"strings"
 
