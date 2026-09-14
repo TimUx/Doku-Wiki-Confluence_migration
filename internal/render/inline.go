@@ -21,7 +21,7 @@ var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}
 var wikiLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 var wrapInline = regexp.MustCompile(`(?is)<(wrap|inline|span)\b([^>]*)>(.*?)</(wrap|inline|span)>`)
 var wrapWidth = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)?(?:%|px|em|rem|vw|vh)$`)
-var lineBreak = regexp.MustCompile(`\\\\(\\s|$)`)
+var lineBreak = regexp.MustCompile(`\\\\(\s|$)`)
 
 func Inline(s string) string {
 	s = html.EscapeString(s)
