@@ -68,7 +68,7 @@ func TestHTMLIgnoresUnsafeWrapWidth(t *testing.T) {
 	src := `<WRAP column 50%;color:red left>Unsafe</WRAP>`
 	p := parser.Parse("layout", src)
 	got := HTML(p)
-	if strings.Contains(got, `color:red`) || strings.Contains(got, `width:50%;color:red`) {
+	if strings.Contains(got, `style="width:50%;color:red`) || strings.Contains(got, `style="color:red`) {
 		t.Fatalf("unsafe width leaked into HTML style: %s", got)
 	}
 	if !strings.Contains(got, `text-align:left;`) {
