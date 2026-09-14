@@ -294,8 +294,11 @@ func parseTableRow(sep, body string) model.Node {
 			continue
 		}
 		if cell == ":::" && len(row.Children) > 0 {
-			v := atoi(row.Children[len(row.Children)-1].Meta["colspan"]) + 1
-			row.Children[len(row.Children)-1].Meta["colspan"] = strconv.Itoa(v)
+			span := atoi(row.Children[len(row.Children)-1].Meta["colspan"])
+			if span < 1 {
+				span = 1
+			}
+			row.Children[len(row.Children)-1].Meta["colspan"] = strconv.Itoa(span + 1)
 			continue
 		}
 		typ := "table_cell"
