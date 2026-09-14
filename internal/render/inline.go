@@ -5,6 +5,7 @@ import (
 	"html"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -75,6 +76,13 @@ func previewInline(s, current string) string {
 	out = sub.ReplaceAllString(out, "<sub>$1</sub>")
 	out = sup.ReplaceAllString(out, "<sup>$1</sup>")
 	return out
+}
+
+func nodeIndent(n model.Node) int {
+	if n.Meta == nil { return 0 }
+	v, err := strconv.Atoi(n.Meta["indent"])
+	if err != nil { return 0 }
+	return v
 }
 
 func normalizeMediaTarget(target string) string {
