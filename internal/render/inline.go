@@ -22,8 +22,43 @@ var wikiLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 var wrapInline = regexp.MustCompile(`(?is)<(wrap|inline|span)\b([^>]*)>(.*?)</(wrap|inline|span)>`)
 var wrapWidth = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)?(?:%|px|em|rem|vw|vh)$`)
 var lineBreak = regexp.MustCompile(`\\\\(?:\s+|$)`)
+var noFormat = regexp.MustCompile(`(?s)%%(.*?)%%`)
+
+const noFormatToken = "\x00DOKUWIKI_NOFORMAT_%d\x00"
+
+type noFormatSpan struct {
+	token string
+	text  string
+}
+
+func protectNoFormat(s string) (string, []noFormatSpan) {
+	matches := noFormat.FindAllStringSubmatch(s, -1)
+	if len(matches) == 0 {
+		return s, nil
+	}
+	spans := make([]noFormatSpan, 0, len(matches))
+	for i, m := range matches {
+		text := m[1]
+		token := fmt.Sprintf(noFormatToken, i)
+		spans = append(spans, noFormatSpan{token: token, text: text})
+		s = strings.Replace(s, m[0], token, 1)
+	}
+	return s, spans
+}
+
+func restoreNoFormat(s string, spans []noFormatSpan, escape bool) string {
+	for _, span := range spans {
+		text := span.text
+		if escape {
+			text = html.EscapeString(text)
+		}
+		s = strings.ReplaceAll(s, span.token, text)
+	}
+	return s
+}
 
 func Inline(s string) string {
+	s, spans := protectNoFormat(s)
 	s = html.EscapeString(s)
 	s = bold.ReplaceAllString(s, "<strong>$1</strong>")
 	s = italic.ReplaceAllString(s, "<em>$1</em>")
@@ -33,11 +68,12 @@ func Inline(s string) string {
 	s = sub.ReplaceAllString(s, "<sub>$1</sub>")
 	s = sup.ReplaceAllString(s, "<sup>$1</sup>")
 	s = lineBreak.ReplaceAllString(s, "<br/>")
-	return s
+	return restoreNoFormat(s, spans, true)
 }
 
 func previewInline(s, current string) string {
-	out := html.EscapeString(s)
+	protected, spans := protectNoFormat(s)
+	out := html.EscapeString(protected)
 	out = wikiLink.ReplaceAllStringFunc(out, func(raw string) string {
 		m := wikiLink.FindStringSubmatch(html.UnescapeString(raw))
 		if len(m) == 0 { return raw }
@@ -76,8 +112,8 @@ func previewInline(s, current string) string {
 	out = mono.ReplaceAllString(out, "<code>$1</code>")
 	out = strike.ReplaceAllString(out, "<del>$1</del>")
 	out = applySubSupOutsideTags(out)
-	out = lineBreak.ReplaceAllString(out, "<br/>$1")
-	return out
+	out = lineBreak.ReplaceAllString(out, "<br/>")
+	return restoreNoFormat(out, spans, true)
 }
 
 func applySubSupOutsideTags(s string) string {
