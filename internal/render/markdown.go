@@ -36,6 +36,7 @@ func Markdown(p model.Page) string {
 func markdownInline(s string) string {
 	s = sub.ReplaceAllString(s, "<sub>$1</sub>")
 	s = sup.ReplaceAllString(s, "<sup>$1</sup>")
+	s = lineBreak.ReplaceAllString(s, "<br/>")
 	return s
 }
 
