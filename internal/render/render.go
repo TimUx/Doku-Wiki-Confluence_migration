@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"html"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 
 var bold = regexp.MustCompile(`\*\*(.+?)\*\*`)
 var italic = regexp.MustCompile(`//(.+?)//`)
+var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]+))?\s*\}\}`)
 
 func Inline(s string) string {
 	s = html.EscapeString(s)
@@ -81,6 +83,39 @@ func HTML(p model.Page) string {
 		}
 	}
 	return b.String()
+}
+
+// PreviewHTML is the browser preview variant of HTML. It resolves DokuWiki
+// media references to the application's read-only media endpoint while
+// keeping the export HTML independent from the running application.
+func PreviewHTML(p model.Page) string {
+	out := HTML(p)
+	return media.ReplaceAllStringFunc(out, func(raw string) string {
+		m := media.FindStringSubmatch(raw)
+		if len(m) == 0 {
+			return raw
+		}
+		target := resolveTarget(p.ID, m[1])
+		label := m[2]
+		if label == "" {
+			label = target
+		}
+		return fmt.Sprintf(`<img class="dokuwiki-media" src="/api/media?target=%s" alt="%s" title="%s">`, url.QueryEscape(target), html.EscapeString(label), html.EscapeString(label))
+	})
+}
+
+func resolveTarget(current, target string) string {
+	target = strings.TrimSpace(target)
+	if strings.HasPrefix(target, ":") {
+		return strings.TrimPrefix(target, ":")
+	}
+	if strings.Contains(target, ":") {
+		return target
+	}
+	if i := strings.LastIndex(current, ":"); i >= 0 {
+		return current[:i+1] + target
+	}
+	return target
 }
 
 func Markdown(p model.Page) string {
