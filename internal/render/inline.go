@@ -13,8 +13,8 @@ var italic = regexp.MustCompile(`//([^/\n]+?)//`)
 var underline = regexp.MustCompile(`__(.+?)__`)
 var mono = regexp.MustCompile(`''(.+?)''`)
 var strike = regexp.MustCompile(`~~(.+?)~~`)
-var sub = regexp.MustCompile(`_(\{[^}]+\}|\w+)`)
-var sup = regexp.MustCompile(`\^(\{[^}]+\}|\w+)`)
+var sub = regexp.MustCompile(`_(\{[^}]+\}|[[:alnum:]])`)
+var sup = regexp.MustCompile(`\^(\{[^}]+\}|[[:alnum:]])`)
 var footnote = regexp.MustCompile(`\(\((.+?)\)\)`)
 var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
 var wikiLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
@@ -72,9 +72,19 @@ func previewInline(s, current string) string {
 	out = underline.ReplaceAllString(out, "<u>$1</u>")
 	out = mono.ReplaceAllString(out, "<code>$1</code>")
 	out = strike.ReplaceAllString(out, "<del>$1</del>")
-	out = sub.ReplaceAllString(out, "<sub>$1</sub>")
-	out = sup.ReplaceAllString(out, "<sup>$1</sup>")
+	out = applySubSupOutsideTags(out)
 	return out
+}
+
+func applySubSupOutsideTags(s string) string {
+	parts := strings.Split(s, "<")
+	if len(parts) == 1 { return sub.ReplaceAllString(s, "<sub>$1</sub>") |> func(v string) string { return sup.ReplaceAllString(v, "<sup>$1</sup>") } }
+	for i := range parts {
+		if i == 0 || !strings.Contains(parts[i], ">") {
+			parts[i] = sup.ReplaceAllString(sub.ReplaceAllString(parts[i], "<sub>$1</sub>"), "<sup>$1</sup>")
+		}
+	}
+	return strings.Join(parts, "<")
 }
 
 func normalizeMediaTarget(target string) string {
