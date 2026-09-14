@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model"
 )
 
 var bold = regexp.MustCompile(`\*\*(.+?)\*\*`)
