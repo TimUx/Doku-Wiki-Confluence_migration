@@ -20,6 +20,10 @@ type Config struct {
 		MediaPath string `yaml:"media_path"`
 		BaseURL   string `yaml:"base_url"`
 	} `yaml:"dokuwiki"`
+	Confluence struct {
+		BaseURL string `yaml:"base_url"`
+		Version string `yaml:"version"`
+	} `yaml:"confluence"`
 	Storage struct {
 		Database        string `yaml:"database"`
 		WorkDirectory   string `yaml:"work_directory"`
