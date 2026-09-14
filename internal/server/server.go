@@ -102,7 +102,7 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	path, e := exporter.Create(a.db, a.cfg.Storage.ExportDirectory, req.Name, req.Pages)
+	path, e := exporter.Create(a.db, a.cfg.Storage.ExportDirectory, req.Name, req.Pages, a.cfg.Confluence.BaseURL)
 	if e != nil {
 		http.Error(w, e.Error(), 400)
 		return
