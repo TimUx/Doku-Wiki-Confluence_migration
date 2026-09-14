@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"io/fs"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,6 +37,7 @@ func (a *App) Handler() http.Handler {
 	m.HandleFunc("POST /api/scans", a.scan)
 	m.HandleFunc("GET /api/pages", a.pages)
 	m.HandleFunc("GET /api/pages/{id}", a.page)
+	m.HandleFunc("GET /api/media", a.media)
 	m.HandleFunc("POST /api/exports", a.export)
 	sub, _ := fs.Sub(assets, "web")
 	m.Handle("/", http.FileServer(http.FS(sub)))
@@ -85,7 +87,24 @@ func (a *App) page(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "page not found", 404)
 		return
 	}
-	jsonOut(w, map[string]any{"page": p, "preview": render.HTML(p)})
+	jsonOut(w, map[string]any{"page": p, "preview": render.PreviewHTML(p)})
+}
+func (a *App) media(w http.ResponseWriter, r *http.Request) {
+	target := strings.TrimSpace(r.URL.Query().Get("target"))
+	if target == "" || len(target) > 1024 {
+		http.Error(w, "invalid media target", 400)
+		return
+	}
+	path, e := a.db.MediaPath(target)
+	if e != nil {
+		http.Error(w, "media not found", 404)
+		return
+	}
+	if ct := mime.TypeByExtension(strings.ToLower(filepath.Ext(path))); ct != "" {
+		w.Header().Set("Content-Type", ct)
+	}
+	w.Header().Set("Content-Disposition", "inline")
+	http.ServeFile(w, r, path)
 }
 func (a *App) export(w http.ResponseWriter, r *http.Request) {
 	var req struct {
