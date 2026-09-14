@@ -21,6 +21,7 @@ var (
 	tableRow         = regexp.MustCompile(`^\s*([|^])(.*)([|^])\s*$`)
 	control          = regexp.MustCompile(`^~~([A-Z]+)(?:\s+([^~]+))?~~$`)
 	numberedHeading  = regexp.MustCompile(`^\s*(-{1,2})(?:#([0-9]+)|"([^"]+)")?\s*(.*)$`)
+	noFormat         = regexp.MustCompile(`(?s)%%.*?%%`)
 )
 
 type headingState struct {
@@ -172,10 +173,14 @@ func parseLines(p *model.Page, id string, lines []string, hs *headingState) {
 			continue
 		}
 		if strings.Contains(raw, "[[") || strings.Contains(raw, "{{") {
-			collectRefs(p, id, raw)
+			collectRefs(p, id, withoutNoFormatRefs(raw))
 		}
 		p.Nodes = append(p.Nodes, model.Node{Type: "paragraph", Text: trim})
 	}
+}
+
+func withoutNoFormatRefs(raw string) string {
+	return noFormat.ReplaceAllString(raw, "")
 }
 
 func numberHeading(text string, level int, hs *headingState) (string, bool) {
