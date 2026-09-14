@@ -67,7 +67,7 @@ func TestCreateEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exportPath, err := Create(db, exportDir, "migration", []string{page.ID})
+	exportPath, err := Create(db, exportDir, "migration", []string{page.ID}, "https://confluence.example.local")
 	if err != nil {
 		t.Fatal(err)
 	}
