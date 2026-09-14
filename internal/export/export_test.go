@@ -130,11 +130,14 @@ Die [[:server:backup|Backup-Seite]] beschreibt die Ausgangslage.
 
 	backupStorage := files["pages/002_Backup/confluence-storage.xml"]
 	if !strings.Contains(backupStorage, `ri:filename="backup-schema.png"`) { t.Errorf("backup page does not reference exported attachment name") }
-	if !strings.Contains(backupStorage, "Restore-Anleitung") { t.Errorf("backup page lost its internal link: %s", backupStorage) }
+	if !strings.Contains(backupStorage, "[DOKUWIKI LINK: server:restore]") || !strings.Contains(backupStorage, "Restore-Anleitung") {
+		t.Errorf("backup page lost its internal link placeholder or text: %s", backupStorage)
+	}
 
 	restoreStorage := files["pages/003_Restore/confluence-storage.xml"]
-	if !strings.Contains(restoreStorage, "Backup-Seite") { t.Errorf("restore page lost its cross-page link text: %s", restoreStorage) }
-	if !strings.Contains(restoreStorage, "server:backup") { t.Errorf("restore page lost its cross-page link target: %s", restoreStorage) }
+	if !strings.Contains(restoreStorage, "[DOKUWIKI LINK: server:backup]") || !strings.Contains(restoreStorage, "Backup-Seite") {
+		t.Errorf("restore page lost its cross-page link placeholder or text: %s", restoreStorage)
+	}
 
 	includes := files["pages/001_Server/includes.csv"]
 	if !strings.Contains(includes, "server:backup") || !strings.Contains(includes, "[DOKUWIKI INCLUDE: server:backup]") { t.Errorf("root include manifest is incomplete: %s", includes) }
