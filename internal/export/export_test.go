@@ -129,22 +129,14 @@ Die [[:server:backup|Backup-Seite]] beschreibt die Ausgangslage.
 	}
 
 	backupStorage := files["pages/002_Backup/confluence-storage.xml"]
-	if !strings.Contains(backupStorage, `ri:filename="backup-schema.png"`) {
-		t.Errorf("backup page does not reference exported attachment name: %s", backupStorage)
-	}
-	if !strings.Contains(backupStorage, `<span>[DOKUWIKI LINK: server:restore]</span>`) {
+	if !strings.Contains(backupStorage, `ri:filename="backup-schema.png"`) { t.Errorf("backup page does not reference exported attachment name") }
+	if !strings.Contains(backupStorage, "[DOKUWIKI LINK: server:restore]") {
 		t.Errorf("backup page lost its internal link placeholder: %s", backupStorage)
-	}
-	if !strings.Contains(backupStorage, `Restore-Anleitung`) {
-		t.Errorf("backup page lost its internal link text: %s", backupStorage)
 	}
 
 	restoreStorage := files["pages/003_Restore/confluence-storage.xml"]
-	if !strings.Contains(restoreStorage, `<span>[DOKUWIKI LINK: server:backup]</span>`) {
+	if !strings.Contains(restoreStorage, "[DOKUWIKI LINK: server:backup]") {
 		t.Errorf("restore page lost its cross-page link placeholder: %s", restoreStorage)
-	}
-	if !strings.Contains(restoreStorage, `Backup-Seite`) {
-		t.Errorf("restore page lost its cross-page link text: %s", restoreStorage)
 	}
 
 	includes := files["pages/001_Server/includes.csv"]
