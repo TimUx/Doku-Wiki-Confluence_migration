@@ -25,7 +25,7 @@ func TestHTMLRendersContiguousTableAsSingleTable(t *testing.T) {
 
 func TestPreviewHTMLRendersTableCellLinksAndColspan(t *testing.T) {
 	p := parser.Parse("demo:table", `^ Name ^ Value ^
-| [[https://example.com|Example]] | ::: |
+| [[https://example.com]] | ::: |
 | Combined | 2 |`)
 	got := PreviewHTML(p)
 	if !strings.Contains(got, `href="https://example.com"`) {
