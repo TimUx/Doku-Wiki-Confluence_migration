@@ -38,7 +38,7 @@ type Manifest struct {
 // Media files are exported using deterministic attachment names. The same
 // names are used by the generated Confluence storage-format XML and recorded
 // in attachments.csv.
-func Create(db *store.Store, dir, name string, ids []string) (string, error) {
+func Create(db *store.Store, dir, name string, ids []string, confluenceBaseURL string) (string, error) {
 	if len(ids) == 0 {
 		return "", fmt.Errorf("select at least one page")
 	}
@@ -96,6 +96,7 @@ func Create(db *store.Store, dir, name string, ids []string) (string, error) {
 		Target: map[string]string{
 			"type":    "confluence",
 			"version": "10.2.17",
+			"baseURL": strings.TrimRight(confluenceBaseURL, "/"),
 		},
 		Pages: pages,
 	}
