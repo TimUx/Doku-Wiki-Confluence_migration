@@ -18,24 +18,62 @@ func Inline(s string) string {
 	s = italic.ReplaceAllString(s, "<em>$1</em>")
 	return s
 }
+
 func HTML(p model.Page) string {
 	var b strings.Builder
-	for _, n := range p.Nodes {
+	for i := 0; i < len(p.Nodes); i++ {
+		n := p.Nodes[i]
 		switch n.Type {
 		case "heading":
 			fmt.Fprintf(&b, "<h%s>%s</h%s>", n.Level, Inline(n.Text), n.Level)
 		case "paragraph":
 			fmt.Fprintf(&b, "<p>%s</p>", Inline(n.Text))
-		case "bullet_item":
-			fmt.Fprintf(&b, "<ul><li>%s</li></ul>", Inline(strings.TrimSpace(strings.TrimPrefix(n.Text, "*"))))
-		case "ordered_item":
-			fmt.Fprintf(&b, "<ol><li>%s</li></ol>", Inline(strings.TrimSpace(strings.TrimPrefix(n.Text, "-"))))
+		case "bullet_item", "ordered_item":
+			ordered := n.Type == "ordered_item"
+			tag := "ul"
+			if ordered {
+				tag = "ol"
+			}
+			fmt.Fprintf(&b, "<%s>", tag)
+			for i < len(p.Nodes) && p.Nodes[i].Type == n.Type {
+				fmt.Fprintf(&b, "<li>%s</li>", Inline(p.Nodes[i].Text))
+				i++
+			}
+			b.WriteString("</" + tag + ">")
+			i--
+		case "table_row":
+			b.WriteString(`<table class="dokuwiki-table"><tbody>`)
+			for i < len(p.Nodes) && p.Nodes[i].Type == "table_row" {
+				b.WriteString("<tr>")
+				for _, cell := range p.Nodes[i].Children {
+					tag := "td"
+					if cell.Type == "table_header" {
+						tag = "th"
+					}
+					fmt.Fprintf(&b, "<%s>%s</%s>", tag, Inline(cell.Text), tag)
+				}
+				b.WriteString("</tr>")
+				i++
+			}
+			b.WriteString("</tbody></table>")
+			i--
 		case "quote":
-			fmt.Fprintf(&b, "<blockquote>%s</blockquote>", Inline(strings.TrimPrefix(n.Text, ">")))
+			fmt.Fprintf(&b, "<blockquote>%s</blockquote>", Inline(n.Text))
 		case "code":
 			fmt.Fprintf(&b, "<pre><code>%s</code></pre>", html.EscapeString(n.Text))
 		case "info", "warning", "note":
-			fmt.Fprintf(&b, "<aside class=\"panel %s\"><strong>%s</strong><p>%s</p></aside>", n.Type, strings.ToUpper(n.Type), Inline(n.Text))
+			class := "hint " + n.Type
+			title := strings.ToUpper(n.Type)
+			if n.Meta != nil && n.Meta["kind"] == "important" {
+				title = "WICHTIG"
+			}
+			b.WriteString(`<aside class="` + class + `"><div class="hint-title">` + title + `</div><div class="hint-body">`)
+			for _, line := range strings.Split(strings.TrimSpace(n.Text), "\n") {
+				if strings.TrimSpace(line) != "" {
+					fmt.Fprintf(&b, "<p>%s</p>", Inline(strings.TrimSpace(line)))
+				}
+			}
+			b.WriteString("</div></aside>")
 		case "include":
 			fmt.Fprintf(&b, "<div class=\"include\">Include Page: %s</div>", html.EscapeString(n.Target))
 		case "unknown_plugin":
@@ -44,6 +82,7 @@ func HTML(p model.Page) string {
 	}
 	return b.String()
 }
+
 func Markdown(p model.Page) string {
 	var b strings.Builder
 	for _, n := range p.Nodes {
@@ -55,9 +94,18 @@ func Markdown(p model.Page) string {
 			}
 			fmt.Fprintf(&b, "%s %s\n\n", strings.Repeat("#", int(lvl[0]-'0')), n.Text)
 		case "bullet_item":
-			fmt.Fprintf(&b, "- %s\n", strings.TrimSpace(strings.TrimPrefix(n.Text, "*")))
+			fmt.Fprintf(&b, "- %s\n", n.Text)
 		case "ordered_item":
-			fmt.Fprintf(&b, "1. %s\n", strings.TrimSpace(strings.TrimPrefix(n.Text, "-")))
+			fmt.Fprintf(&b, "1. %s\n", n.Text)
+		case "table_row":
+			b.WriteString("| ")
+			for i, cell := range n.Children {
+				if i > 0 {
+					b.WriteString(" | ")
+				}
+				b.WriteString(cell.Text)
+			}
+			b.WriteString(" |\n")
 		case "code":
 			fmt.Fprintf(&b, "```\n%s\n```\n\n", n.Text)
 		case "include":
