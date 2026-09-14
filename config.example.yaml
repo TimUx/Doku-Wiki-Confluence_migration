@@ -6,6 +6,9 @@ dokuwiki:
   pages_path: "/var/lib/dokuwiki/data/pages"
   media_path: "/var/lib/dokuwiki/data/media"
   base_url: "https://wiki.example.local"
+confluence:
+  base_url: "https://confluence.example.local"
+  version: "10.2.17"
 storage:
   database: "/var/lib/dokuwiki-confluence-migrator/migrator.db"
   work_directory: "/var/lib/dokuwiki-confluence-migrator"
