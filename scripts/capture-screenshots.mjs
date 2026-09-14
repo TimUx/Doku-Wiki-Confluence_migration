@@ -20,10 +20,10 @@ try {
   await page.screenshot({ path: "docs/screenshots/01-dashboard.png", fullPage: true });
 
   await page.getByRole("button", { name: "Seiten & Namespaces" }).click();
-  await page.locator("#pageRows tr").first().waitFor();
+  await page.locator("#pageTree .page-row").first().waitFor();
   await page.screenshot({ path: "docs/screenshots/02-pages.png", fullPage: true });
 
-  const row = page.locator("#pageRows tr").filter({ hasText: "SAP Betriebshandbuch" });
+  const row = page.locator("#pageTree .page-row").filter({ hasText: "SAP Betriebshandbuch" });
   await row.locator('input[type="checkbox"]').check();
   await page.getByText("1 ausgewählt", { exact: true }).waitFor();
   await page.screenshot({ path: "docs/screenshots/03-selection.png", fullPage: true });
@@ -33,7 +33,7 @@ try {
   await reviewButton.click();
   await page.getByRole("heading", { name: "2 · Übernahme prüfen" }).waitFor();
 
-  const detailRow = page.locator("#pageRows tr").filter({ hasText: "SAP Betriebshandbuch" });
+  const detailRow = page.locator("#pageTree .page-row").filter({ hasText: "SAP Betriebshandbuch" });
   await detailRow.click();
   const detailHeading = page.locator("#detail > h2");
   await detailHeading.waitFor();
