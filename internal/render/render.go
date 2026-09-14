@@ -11,8 +11,9 @@ import (
 )
 
 var bold = regexp.MustCompile(`\*\*(.+?)\*\*`)
-var italic = regexp.MustCompile(`//(.+?)//`)
+var italic = regexp.MustCompile(`//([^/\n]+?)//`)
 var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
+var wikiLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 
 func Inline(s string) string {
 	s = html.EscapeString(s)
@@ -86,14 +87,14 @@ func HTML(p model.Page) string {
 }
 
 // PreviewHTML renders the page for the browser preview and resolves DokuWiki
-// media references through the application's read-only media endpoint.
+// media and links without fetching external resources from the server.
 func PreviewHTML(p model.Page) string {
 	var b strings.Builder
 	for i := 0; i < len(p.Nodes); i++ {
 		n := p.Nodes[i]
 		switch n.Type {
 		case "heading":
-			fmt.Fprintf(&b, "<h%s>%s</h%s>", n.Level, previewInline(n.Text, p.ID), n.Level)
+			fmt.Fprintf(&b, `<h%s id="%s">%s</h%s>`, n.Level, anchorID(n.Text), previewInline(n.Text, p.ID), n.Level)
 		case "paragraph":
 			fmt.Fprintf(&b, "<p>%s</p>", previewInline(n.Text, p.ID))
 		case "bullet_item", "ordered_item":
@@ -158,16 +159,82 @@ func previewInline(s, current string) string {
 		if len(m) == 0 {
 			return raw
 		}
-		target := resolveTarget(current, m[1])
+		target := normalizeMediaTarget(resolveTarget(current, m[1]))
 		label := m[2]
 		if label == "" {
 			label = target
 		}
 		return fmt.Sprintf(`<img class="dokuwiki-media" src="/api/media?target=%s" alt="%s" title="%s">`, url.QueryEscape(target), html.EscapeString(label), html.EscapeString(label))
 	})
+	out = wikiLink.ReplaceAllStringFunc(out, func(raw string) string {
+		m := wikiLink.FindStringSubmatch(html.UnescapeString(raw))
+		if len(m) == 0 {
+			return raw
+		}
+		target := strings.TrimSpace(m[1])
+		label := m[2]
+		if label == "" {
+			label = target
+		}
+		if isExternalLink(target) {
+			return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>`, html.EscapeString(normalizeURL(target)), previewInline(label, current))
+		}
+		if strings.HasPrefix(target, "#") {
+			return fmt.Sprintf(`<a href="#%s">%s</a>`, html.EscapeString(anchorID(strings.TrimPrefix(target, "#"))), previewInline(label, current))
+		}
+		resolved := resolveTarget(current, target)
+		return fmt.Sprintf(`<span class="internal-link">[DOKUWIKI LINK: %s]</span>`, html.EscapeString(resolved))
+	})
 	out = bold.ReplaceAllString(out, "<strong>$1</strong>")
 	out = italic.ReplaceAllString(out, "<em>$1</em>")
 	return out
+}
+
+func normalizeMediaTarget(target string) string {
+	target = unescapeDokuWiki(target)
+	if i := strings.Index(target, "fetch.php/"); i >= 0 {
+		target = target[i+len("fetch.php/"):]
+	}
+	return strings.TrimPrefix(target, "/")
+}
+
+func unescapeDokuWiki(s string) string {
+	for _, pair := range []struct{ escaped, plain string }{
+		{`\:`, ":"}, {`\_`, "_"}, {`\.`, "."}, {`\-`, "-"}, {`\+`, "+"}, {`\#`, "#"}, {`\&`, "&"}, {`\?`, "?"}, {`\|`, "|"}, {`\*`, "*"},
+	} {
+		s = strings.ReplaceAll(s, pair.escaped, pair.plain)
+	}
+	return s
+}
+
+func normalizeURL(s string) string {
+	s = unescapeDokuWiki(strings.TrimSpace(s))
+	s = strings.Replace(s, "https:*", "https://", 1)
+	s = strings.Replace(s, "http:*", "http://", 1)
+	return s
+}
+
+func isExternalLink(s string) bool {
+	s = normalizeURL(s)
+	return strings.Contains(s, "://") || strings.HasPrefix(strings.ToLower(s), "mailto:")
+}
+
+func anchorID(s string) string {
+	s = strings.ToLower(strings.TrimSpace(unescapeDokuWiki(s)))
+	var b strings.Builder
+	lastDash := false
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r >= 128 {
+			b.WriteRune(r)
+			lastDash = false
+			continue
+		}
+		if !lastDash && b.Len() > 0 {
+			b.WriteByte('-')
+			lastDash = true
+		}
+	}
+	return strings.Trim(b.String(), "-")
 }
 
 func Markdown(p model.Page) string {
