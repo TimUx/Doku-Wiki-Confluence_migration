@@ -14,6 +14,9 @@ var (
 	media      = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]+))?\s*\}\}`)
 	include    = regexp.MustCompile(`(?i)\{\{(?:page|section|include)>\s*([^}&]+)(?:&([^}]+))?\}\}`)
 	pluginOpen = regexp.MustCompile(`(?i)^<([a-z][\w-]*)(?:\s+([^>]*))?>\s*$`)
+	blockOpen  = regexp.MustCompile(`(?i)^<(block|WRAP)\s+([^>]+)>\s*$`)
+	listItem   = regexp.MustCompile(`^\s*([*-])\s+(.*)$`)
+	tableRow   = regexp.MustCompile(`^\s*([|^])(.*)([|^])\s*$`)
 )
 
 func Parse(id, src string) model.Page {
@@ -47,6 +50,26 @@ func Parse(id, src string) model.Page {
 			p.Nodes = append(p.Nodes, model.Node{Type: "code", Text: strings.Join(b, "\n")})
 			continue
 		}
+		if m := blockOpen.FindStringSubmatch(trim); m != nil {
+			plugin := strings.ToLower(m[1])
+			kind := strings.ToLower(strings.Fields(m[2])[0])
+			end := "</" + m[1] + ">"
+			var b []string
+			i++
+			for i < len(lines) && !strings.EqualFold(strings.TrimSpace(lines[i]), end) {
+				b = append(b, lines[i])
+				i++
+			}
+			typ := "note"
+			if kind == "important" || strings.Contains(kind, "warning") || strings.Contains(kind, "danger") {
+				typ = "warning"
+			} else if kind == "info" || kind == "tip" {
+				typ = "info"
+			}
+			p.Plugins = appendUnique(p.Plugins, plugin)
+			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: strings.TrimSpace(strings.Join(b, "\n")), Plugin: plugin, Meta: map[string]string{"kind": kind}})
+			continue
+		}
 		if strings.HasPrefix(strings.ToUpper(trim), "<WRAP ") {
 			kind := strings.TrimSuffix(strings.TrimPrefix(trim, "<WRAP "), ">")
 			var b []string
@@ -63,7 +86,7 @@ func Parse(id, src string) model.Page {
 				typ = "info"
 			}
 			p.Plugins = appendUnique(p.Plugins, "wrap")
-			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: strings.Join(b, "\n"), Plugin: "wrap"})
+			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: strings.TrimSpace(strings.Join(b, "\n")), Plugin: "wrap"})
 			continue
 		}
 		if m := include.FindStringSubmatch(trim); m != nil {
@@ -82,6 +105,32 @@ func Parse(id, src string) model.Page {
 				continue
 			}
 		}
+
+		if m := tableRow.FindStringSubmatch(trim); m != nil {
+			sep := string(m[1])
+			body := m[2]
+			if strings.HasSuffix(body, sep) {
+				body = strings.TrimSuffix(body, sep)
+			}
+			parts := strings.Split(body, sep)
+			row := model.Node{Type: "table_row"}
+			for _, part := range parts {
+				cell := strings.TrimSpace(part)
+				if cell == "" {
+					continue
+				}
+				cellType := "table_cell"
+				if sep == "^" {
+					cellType = "table_header"
+				}
+				row.Children = append(row.Children, model.Node{Type: cellType, Text: cell})
+			}
+			if len(row.Children) > 0 {
+				p.Nodes = append(p.Nodes, row)
+				continue
+			}
+		}
+
 		for _, m := range link.FindAllStringSubmatch(raw, -1) {
 			kind := "internal"
 			target := m[1]
@@ -95,18 +144,24 @@ func Parse(id, src string) model.Page {
 		for _, m := range media.FindAllStringSubmatch(raw, -1) {
 			p.Media = append(p.Media, model.Reference{Target: resolve(id, m[1]), Display: m[2], Kind: "media"})
 		}
-		typ := "paragraph"
-		if strings.HasPrefix(trim, "  *") {
-			typ = "bullet_item"
-		} else if strings.HasPrefix(trim, "  -") {
-			typ = "ordered_item"
-		} else if strings.HasPrefix(trim, ">") {
-			typ = "quote"
+
+		if m := listItem.FindStringSubmatch(raw); m != nil {
+			typ := "bullet_item"
+			if m[1] == "-" {
+				typ = "ordered_item"
+			}
+			p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: m[2]})
+			continue
 		}
-		p.Nodes = append(p.Nodes, model.Node{Type: typ, Text: trim})
+		if strings.HasPrefix(trim, ">") {
+			p.Nodes = append(p.Nodes, model.Node{Type: "quote", Text: strings.TrimSpace(strings.TrimPrefix(trim, ">"))})
+			continue
+		}
+		p.Nodes = append(p.Nodes, model.Node{Type: "paragraph", Text: trim})
 	}
 	return p
 }
+
 func resolve(current, target string) string {
 	target = strings.TrimSpace(target)
 	if strings.HasPrefix(target, ":") {
