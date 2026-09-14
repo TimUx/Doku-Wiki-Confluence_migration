@@ -12,7 +12,7 @@ import (
 
 var bold = regexp.MustCompile(`\*\*(.+?)\*\*`)
 var italic = regexp.MustCompile(`//(.+?)//`)
-var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*) )?\s*\}\}`)
+var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
 
 func Inline(s string) string {
 	s = html.EscapeString(s)
