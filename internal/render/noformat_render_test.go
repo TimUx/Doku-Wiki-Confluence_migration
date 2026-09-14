@@ -42,10 +42,10 @@ func TestMarkdownPreservesDokuWikiNoFormat(t *testing.T) {
 	if !strings.Contains(got, `\*\*not bold\*\*`) {
 		t.Fatalf("markdown would interpret no-format bold markers: %s", got)
 	}
-	if !strings.Contains(got, `[[demo:page|not a link]]`) {
+	if !strings.Contains(got, `\[\[demo:page|not a link\]\]`) {
 		t.Fatalf("markdown changed no-format link syntax: %s", got)
 	}
-	if !strings.Contains(got, `{{image.png}} H_2O`) {
+	if !strings.Contains(got, `{{image.png}} H\_2O`) {
 		t.Fatalf("markdown changed no-format literal syntax: %s", got)
 	}
 	if !strings.Contains(got, "**bold**") {
