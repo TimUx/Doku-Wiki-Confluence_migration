@@ -1,106 +1,25 @@
 package render
 
-import (
-	"fmt"
-	"html"
-	"net/url"
-	"regexp"
-	"strings"
-
-	"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model"
-)
-
-var bold = regexp.MustCompile(`\*\*(.+?)\*\*`)
-var italic = regexp.MustCompile(`//([^/\n]+?)//`)
-var media = regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
-var wikiLink = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
-
-func Inline(s string) string {
-	s = html.EscapeString(s)
-	s = bold.ReplaceAllString(s, "<strong>$1</strong>")
-	s = italic.ReplaceAllString(s, "<em>$1</em>")
-	return s
-}
-
-func HTML(p model.Page) string {
-	var b strings.Builder
-	for i := 0; i < len(p.Nodes); i++ {
-		n := p.Nodes[i]
-		switch n.Type {
-		case "heading":
-			fmt.Fprintf(&b, "<h%s>%s</h%s>", n.Level, Inline(n.Text), n.Level)
-		case "paragraph":
-			fmt.Fprintf(&b, "<p>%s</p>", Inline(n.Text))
-		case "bullet_item", "ordered_item":
-			ordered := n.Type == "ordered_item"; tag := "ul"; if ordered { tag = "ol" }
-			fmt.Fprintf(&b, "<%s>", tag)
-			for i < len(p.Nodes) && p.Nodes[i].Type == n.Type { fmt.Fprintf(&b, "<li>%s</li>", Inline(p.Nodes[i].Text)); i++ }
-			b.WriteString("</" + tag + ">"); i--
-		case "table_row":
-			b.WriteString(`<table class="dokuwiki-table"><tbody>`)
-			for i < len(p.Nodes) && p.Nodes[i].Type == "table_row" { b.WriteString("<tr>"); for _, cell := range p.Nodes[i].Children { tag := "td"; if cell.Type == "table_header" { tag = "th" }; fmt.Fprintf(&b, "<%s>%s</%s>", tag, Inline(cell.Text), tag) }; b.WriteString("</tr>"); i++ }
-			b.WriteString("</tbody></table>"); i--
-		case "quote": fmt.Fprintf(&b, "<blockquote>%s</blockquote>", Inline(n.Text))
-		case "code": fmt.Fprintf(&b, "<pre><code>%s</code></pre>", html.EscapeString(n.Text))
-		case "info", "warning", "note":
-			class := "hint " + n.Type; title := strings.ToUpper(n.Type); if n.Meta != nil && n.Meta["kind"] == "important" { title = "WICHTIG" }
-			b.WriteString(`<aside class="` + class + `"><div class="hint-title">` + title + `</div><div class="hint-body">`); for _, line := range strings.Split(strings.TrimSpace(n.Text), "\n") { if strings.TrimSpace(line) != "" { fmt.Fprintf(&b, "<p>%s</p>", Inline(strings.TrimSpace(line))) } }; b.WriteString("</div></aside>")
-		case "include": fmt.Fprintf(&b, "<div class=\"include\">Include Page: %s</div>", html.EscapeString(n.Target))
-		case "unknown_plugin": fmt.Fprintf(&b, "<div class=\"unsupported\"><strong>Unsupported plugin: %s</strong><pre>%s</pre></div>", html.EscapeString(n.Plugin), html.EscapeString(n.Raw))
-		}
-	}
-	return b.String()
-}
-
-func PreviewHTML(p model.Page) string {
-	var b strings.Builder
-	for i := 0; i < len(p.Nodes); i++ {
-		n := p.Nodes[i]
-		switch n.Type {
-		case "heading": fmt.Fprintf(&b, `<h%s id="%s">%s</h%s>`, n.Level, anchorID(n.Text), previewInline(n.Text, p.ID), n.Level)
-		case "paragraph": fmt.Fprintf(&b, "<p>%s</p>", previewInline(n.Text, p.ID))
-		case "bullet_item", "ordered_item":
-			ordered := n.Type == "ordered_item"; tag := "ul"; if ordered { tag = "ol" }; fmt.Fprintf(&b, "<%s>", tag); for i < len(p.Nodes) && p.Nodes[i].Type == n.Type { fmt.Fprintf(&b, "<li>%s</li>", previewInline(p.Nodes[i].Text, p.ID)); i++ }; b.WriteString("</" + tag + ">"); i--
-		case "table_row":
-			b.WriteString(`<table class="dokuwiki-table"><tbody>`); for i < len(p.Nodes) && p.Nodes[i].Type == "table_row" { b.WriteString("<tr>"); for _, cell := range p.Nodes[i].Children { tag := "td"; if cell.Type == "table_header" { tag = "th" }; fmt.Fprintf(&b, "<%s>%s</%s>", tag, previewInline(cell.Text, p.ID), tag) }; b.WriteString("</tr>"); i++ }; b.WriteString("</tbody></table>"); i--
-		case "quote": fmt.Fprintf(&b, "<blockquote>%s</blockquote>", previewInline(n.Text, p.ID))
-		case "code": fmt.Fprintf(&b, "<pre><code>%s</code></pre>", html.EscapeString(n.Text))
-		case "info", "warning", "note":
-			class := "hint " + n.Type; title := strings.ToUpper(n.Type); if n.Meta != nil && n.Meta["kind"] == "important" { title = "WICHTIG" }; b.WriteString(`<aside class="` + class + `"><div class="hint-title">` + title + `</div><div class="hint-body">`); for _, line := range strings.Split(strings.TrimSpace(n.Text), "\n") { if strings.TrimSpace(line) != "" { fmt.Fprintf(&b, "<p>%s</p>", previewInline(strings.TrimSpace(line), p.ID)) } }; b.WriteString("</div></aside>")
-		case "include": fmt.Fprintf(&b, "<div class=\"include\">Include Page: %s</div>", html.EscapeString(n.Target))
-		case "unknown_plugin": fmt.Fprintf(&b, "<div class=\"unsupported\"><strong>Unsupported plugin: %s</strong><pre>%s</pre></div>", html.EscapeString(n.Plugin), html.EscapeString(n.Raw))
-		}
-	}
-	return b.String()
-}
-
-func previewInline(s, current string) string {
-	out := html.EscapeString(s)
-	out = wikiLink.ReplaceAllStringFunc(out, func(raw string) string {
-		m := wikiLink.FindStringSubmatch(html.UnescapeString(raw)); if len(m) == 0 { return raw }
-		target := strings.TrimSpace(m[1]); label := m[2]; if label == "" { label = target }
-		if isExternalLink(target) { return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>`, html.EscapeString(normalizeURL(target)), previewInline(label, current)) }
-		if strings.HasPrefix(target, "#") { return fmt.Sprintf(`<a href="#%s">%s</a>`, html.EscapeString(anchorID(strings.TrimPrefix(target, "#"))), previewInline(label, current)) }
-		return fmt.Sprintf(`<span class="internal-link">[DOKUWIKI LINK: %s]</span>`, html.EscapeString(resolveTarget(current, target)))
-	})
-	out = media.ReplaceAllStringFunc(out, func(raw string) string {
-		m := media.FindStringSubmatch(html.UnescapeString(raw)); if len(m) == 0 { return raw }
-		target := normalizeMediaTarget(resolveTarget(current, m[1])); label := m[2]; if label == "" { label = target }
-		return fmt.Sprintf(`<img class="dokuwiki-media" src="/api/media?target=%s" alt="%s" title="%s">`, url.QueryEscape(target), html.EscapeString(label), html.EscapeString(label))
-	})
-	out = bold.ReplaceAllString(out, "<strong>$1</strong>")
-	out = italic.ReplaceAllString(out, "<em>$1</em>")
-	return out
-}
-
-func normalizeMediaTarget(target string) string { target = unescapeDokuWiki(target); if i := strings.Index(target, "fetch.php/"); i >= 0 { target = target[i+len("fetch.php/"):] }; return strings.TrimPrefix(target, "/") }
-func unescapeDokuWiki(s string) string { for _, pair := range []struct{ escaped, plain string }{{`\:`, ":"}, {`\_`, "_"}, {`\.`, "."}, {`\-`, "-"}, {`\+`, "+"}, {`\#`, "#"}, {`\&`, "&"}, {`\?`, "?"}, {`\|`, "|"}, {`\*`, "*"}} { s = strings.ReplaceAll(s, pair.escaped, pair.plain) }; return s }
-func normalizeURL(s string) string { s = unescapeDokuWiki(strings.TrimSpace(s)); s = strings.Replace(s, "https:*", "https://", 1); s = strings.Replace(s, "http:*", "http://", 1); return s }
-func isExternalLink(s string) bool { s = normalizeURL(s); return strings.Contains(s, "://") || strings.HasPrefix(strings.ToLower(s), "mailto:") }
-func anchorID(s string) string { s = strings.ToLower(strings.TrimSpace(unescapeDokuWiki(s))); var b strings.Builder; lastDash := false; for _, r := range s { if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r >= 128 { b.WriteRune(r); lastDash = false; continue }; if !lastDash && b.Len() > 0 { b.WriteByte('-'); lastDash = true } }; return strings.Trim(b.String(), "-") }
-
-func Markdown(p model.Page) string {
-	var b strings.Builder
-	for _, n := range p.Nodes { switch n.Type { case "heading": lvl := n.Level; if lvl == "" { lvl = "2" }; fmt.Fprintf(&b, "%s %s\n\n", strings.Repeat("#", int(lvl[0]-'0')), n.Text); case "bullet_item": fmt.Fprintf(&b, "- %s\n", n.Text); case "ordered_item": fmt.Fprintf(&b, "1. %s\n", n.Text); case "table_row": b.WriteString("| "); for i, cell := range n.Children { if i > 0 { b.WriteString(" | ") }; b.WriteString(cell.Text) }; b.WriteString(" |\n"); case "code": fmt.Fprintf(&b, "```\n%s\n```\n\n", n.Text); case "include": fmt.Fprintf(&b, "> Include Page: `%s`\n\n", n.Target); case "unknown_plugin": fmt.Fprintf(&b, "> **Unsupported plugin `%s`**\n> `%s`\n\n", n.Plugin, n.Raw); default: fmt.Fprintf(&b, "%s\n\n", n.Text) } }
-	return b.String()
-}
+import("fmt";"html";"net/url";"regexp";"strings";"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model")
+var bold=regexp.MustCompile(`\*\*(.+?)\*\*`)
+var italic=regexp.MustCompile(`//([^/\n]+?)//`)
+var underline=regexp.MustCompile(`__(.+?)__`)
+var mono=regexp.MustCompile(`''(.+?)''`)
+var strike=regexp.MustCompile(`~~(.+?)~~`)
+var footnote=regexp.MustCompile(`\(\((.+?)\)\)`)
+var media=regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
+var wikiLink=regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
+var wrapInline=regexp.MustCompile(`(?is)<(wrap|inline|span)\b([^>]*)>(.*?)</(wrap|inline|span)>`)
+func Inline(s string)string{s=html.EscapeString(s);s=bold.ReplaceAllString(s,"<strong>$1</strong>");s=italic.ReplaceAllString(s,"<em>$1</em>");s=underline.ReplaceAllString(s,"<u>$1</u>");s=mono.ReplaceAllString(s,"<code>$1</code>");s=strike.ReplaceAllString(s,"<del>$1</del>");return s}
+func HTML(p model.Page)string{var b strings.Builder;for i:=0;i<len(p.Nodes);i++{n:=p.Nodes[i];switch n.Type{case "heading":fmt.Fprintf(&b,"<h%s>%s</h%s>",n.Level,Inline(n.Text),n.Level);case "paragraph":fmt.Fprintf(&b,"<p>%s</p>",Inline(n.Text));case "bullet_item","ordered_item":tag:="ul";if n.Type=="ordered_item"{tag="ol"};fmt.Fprintf(&b,"<%s><li>%s</li></%s>",tag,Inline(n.Text),tag);case "table_row":b.WriteString(`<table class="dokuwiki-table"><tbody>`);for _,c:=range n.Children{tag:="td";if c.Type=="table_header"{tag="th"};span:="";if c.Meta!=nil&&c.Meta["colspan"]!=""{span=` colspan="`+c.Meta["colspan"]+`"`};fmt.Fprintf(&b,"<%s%s>%s</%s>",tag,span,Inline(c.Text),tag)};b.WriteString("</tbody></table>");case "quote":fmt.Fprintf(&b,"<blockquote>%s</blockquote>",Inline(n.Text));case "hr":b.WriteString("<hr>");case "code":fmt.Fprintf(&b,"<pre><code>%s</code></pre>",html.EscapeString(n.Text));case "info","warning","note":fmt.Fprintf(&b,`<aside class="hint %s"><strong>%s</strong><p>%s</p></aside>`,n.Type,html.EscapeString(strings.ToUpper(n.Type)),Inline(n.Text));case "wrap":renderWrapHTML(&b,n);case "include":fmt.Fprintf(&b,"<div class=\"include\">Include %s: %s</div>",html.EscapeString(n.Meta["mode"]),html.EscapeString(n.Target));case "nowiki":fmt.Fprintf(&b,"<pre>%s</pre>",html.EscapeString(n.Text));case "unknown_plugin":fmt.Fprintf(&b,"<div class=\"unsupported\"><strong>Unsupported plugin: %s</strong><pre>%s</pre></div>",html.EscapeString(n.Plugin),html.EscapeString(n.Raw))}};return b.String()}
+func PreviewHTML(p model.Page)string{var b strings.Builder;for i:=0;i<len(p.Nodes);i++{n:=p.Nodes[i];switch n.Type{case "heading":fmt.Fprintf(&b,`<h%s id="%s">%s</h%s>`,n.Level,anchorID(n.Text),previewInline(n.Text,p.ID),n.Level);case "paragraph":fmt.Fprintf(&b,"<p>%s</p>",previewInline(n.Text,p.ID));case "bullet_item","ordered_item":tag:="ul";if n.Type=="ordered_item"{tag="ol"};fmt.Fprintf(&b,"<%s><li>%s</li></%s>",tag,previewInline(n.Text,p.ID),tag);case "table_row":b.WriteString(`<table class="dokuwiki-table"><tbody>`);for _,c:=range n.Children{tag:="td";if c.Type=="table_header"{tag="th"};span:="";if c.Meta!=nil&&c.Meta["colspan"]!=""{span=` colspan="`+c.Meta["colspan"]+`"`};fmt.Fprintf(&b,"<%s%s>%s</%s>",tag,span,previewInline(c.Text,p.ID),tag)};b.WriteString("</tbody></table>");case "quote":fmt.Fprintf(&b,"<blockquote>%s</blockquote>",previewInline(n.Text,p.ID));case "hr":b.WriteString("<hr>");case "code":fmt.Fprintf(&b,"<pre><code>%s</code></pre>",html.EscapeString(n.Text));case "info","warning","note":fmt.Fprintf(&b,`<aside class="hint %s"><strong>%s</strong><p>%s</p></aside>`,n.Type,html.EscapeString(strings.ToUpper(n.Type)),previewInline(n.Text,p.ID));case "wrap":renderWrapPreview(&b,n,p.ID);case "include":fmt.Fprintf(&b,"<div class=\"include\">Include %s: %s</div>",html.EscapeString(n.Meta["mode"]),html.EscapeString(n.Target));case "nowiki":fmt.Fprintf(&b,"<pre>%s</pre>",html.EscapeString(n.Text));case "unknown_plugin":fmt.Fprintf(&b,"<div class=\"unsupported\"><strong>Unsupported plugin: %s</strong><pre>%s</pre></div>",html.EscapeString(n.Plugin),html.EscapeString(n.Raw))}};return b.String()}
+func previewInline(s,current string)string{out:=html.EscapeString(s);out=wikiLink.ReplaceAllStringFunc(out,func(raw string)string{m:=wikiLink.FindStringSubmatch(html.UnescapeString(raw));if len(m)==0{return raw};target:=strings.TrimSpace(m[1]);label:=m[2];if label==""{label=target};if isExternalLink(target){return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>`,html.EscapeString(normalizeURL(target)),previewInline(label,current))};if strings.HasPrefix(target,"#"){return fmt.Sprintf(`<a href="#%s">%s</a>`,html.EscapeString(anchorID(strings.TrimPrefix(target,"#"))),previewInline(label,current))};return fmt.Sprintf(`<span class="internal-link">[DOKUWIKI LINK: %s]</span>`,html.EscapeString(resolveTarget(current,target))) });out=media.ReplaceAllStringFunc(out,func(raw string)string{m:=media.FindStringSubmatch(html.UnescapeString(raw));if len(m)==0{return raw};target:=normalizeMediaTarget(resolveTarget(current,m[1]));label:=m[2];if label==""{label=target};return fmt.Sprintf(`<img class="dokuwiki-media" src="/api/media?target=%s" alt="%s" title="%s">`,url.QueryEscape(target),html.EscapeString(label),html.EscapeString(label))});out=wrapInline.ReplaceAllStringFunc(out,func(raw string)string{m:=wrapInline.FindStringSubmatch(html.UnescapeString(raw));if len(m)==0{return raw};return `<span class="dokuwiki-wrap `+html.EscapeString(strings.TrimSpace(m[2]))+`">`+previewInline(m[3],current)+`</span>`});out=footnote.ReplaceAllStringFunc(out,func(raw string)string{m:=footnote.FindStringSubmatch(html.UnescapeString(raw));if len(m)==0{return raw};return `<sup class="footnote">`+previewInline(m[1],current)+`</sup>`});out=bold.ReplaceAllString(out,"<strong>$1</strong>");out=italic.ReplaceAllString(out,"<em>$1</em>");out=underline.ReplaceAllString(out,"<u>$1</u>");out=mono.ReplaceAllString(out,"<code>$1</code>");out=strike.ReplaceAllString(out,"<del>$1</del>");return out}
+func renderWrapHTML(b *strings.Builder,n model.Node){classes:="";if n.Meta!=nil{classes=n.Meta["classes"]};fmt.Fprintf(b,`<div class="dokuwiki-wrap %s">`,html.EscapeString(classes));for _,c:=range n.Children{switch c.Type{case "paragraph":fmt.Fprintf(b,"<p>%s</p>",Inline(c.Text));case "heading":fmt.Fprintf(b,"<h%s>%s</h%s>",c.Level,Inline(c.Text),c.Level);case "wrap":renderWrapHTML(b,c);default:if c.Text!=""{fmt.Fprintf(b,"<p>%s</p>",Inline(c.Text))}}};b.WriteString("</div>")}
+func renderWrapPreview(b *strings.Builder,n model.Node,current string){classes:="";if n.Meta!=nil{classes=n.Meta["classes"]};fmt.Fprintf(b,`<div class="dokuwiki-wrap %s">`,html.EscapeString(classes));for _,c:=range n.Children{switch c.Type{case "paragraph":fmt.Fprintf(b,"<p>%s</p>",previewInline(c.Text,current));case "heading":fmt.Fprintf(b,`<h%s id="%s">%s</h%s>`,c.Level,anchorID(c.Text),previewInline(c.Text,current),c.Level);case "wrap":renderWrapPreview(b,c,current);default:if c.Text!=""{fmt.Fprintf(b,"<p>%s</p>",previewInline(c.Text,current))}}};b.WriteString("</div>")}
+func normalizeMediaTarget(target string)string{target=unescapeDokuWiki(target);if i:=strings.Index(target,"fetch.php/");i>=0{target=target[i+len("fetch.php/"):]} ;return strings.TrimPrefix(target,"/")}
+func unescapeDokuWiki(s string)string{for _,p:=range []struct{a,b string}{{`\:`,":"},{`\_`,`_`},{`\.`,`.`},{`\-`,`-`},{`\+`,`+`},{`\#`,`#`},{`\&`,`&`},{`\?`,`?`},{`\|`,`|`},{`\*`,`*`}}{s=strings.ReplaceAll(s,p.a,p.b)};return s}
+func normalizeURL(s string)string{s=unescapeDokuWiki(strings.TrimSpace(s));s=strings.Replace(s,"https:*","https://",1);s=strings.Replace(s,"http:*","http://",1);return s}
+func isExternalLink(s string)bool{s=normalizeURL(s);return strings.Contains(s,"://")||strings.HasPrefix(strings.ToLower(s),"mailto:")}
+func anchorID(s string)string{s=strings.ToLower(strings.TrimSpace(unescapeDokuWiki(s)));var b strings.Builder;dash:=false;for _,r:=range s{if(r>='a'&&r<='z')||(r>='0'&&r<='9')||r>=128{b.WriteRune(r);dash=false}else if !dash&&b.Len()>0{b.WriteByte('-');dash=true}};return strings.Trim(b.String(),"-")}
+func resolveTarget(current,target string)string{target=strings.TrimSpace(target);if strings.HasPrefix(target,":"){return strings.TrimPrefix(target,":")};if strings.HasPrefix(target,"#"){return target};if strings.Contains(target,":"){return target};if i:=strings.LastIndex(current,":");i>=0{return current[:i+1]+target};return target}
+func Markdown(p model.Page)string{var b strings.Builder;for _,n:=range p.Nodes{switch n.Type{case "heading":fmt.Fprintf(&b,"%s %s\n\n",strings.Repeat("#",len(n.Level)),n.Text);case "bullet_item":fmt.Fprintf(&b,"- %s\n",n.Text);case "ordered_item":fmt.Fprintf(&b,"1. %s\n",n.Text);case "table_row":b.WriteString("| ");for i,c:=range n.Children{if i>0{b.WriteString(" | ")};b.WriteString(c.Text)};b.WriteString(" |\n");case "code":fmt.Fprintf(&b,"```\n%s\n```\n\n",n.Text);case "include":fmt.Fprintf(&b,"> Include %s: `%s`\n\n",n.Meta["mode"],n.Target);default:fmt.Fprintf(&b,"%s\n\n",n.Text)}};return b.String()}
