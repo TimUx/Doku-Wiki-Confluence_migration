@@ -16,6 +16,7 @@ var (
 	wrapOpen         = regexp.MustCompile(`(?i)^<(WRAP|block|div|wrap|inline|span)\b([^>]*)>(.*)$`)
 	wrapSelf         = regexp.MustCompile(`(?i)^<(WRAP|block|div|wrap|inline|span)\b([^>]*)/\s*>$`)
 	codeOpen         = regexp.MustCompile(`(?i)^<(code|file)\b([^>]*)>(.*)$`)
+	nowikiOpen       = regexp.MustCompile(`(?is)^<nowiki\b[^>]*>(.*)</nowiki>\s*$`)
 	listItem         = regexp.MustCompile(`^(\s*)([*-])\s+(.*)$`)
 	tableRow         = regexp.MustCompile(`^\s*([|^])(.*)([|^])\s*$`)
 	control          = regexp.MustCompile(`^~~([A-Z]+)(?:\s+([^~]+))?~~$`)
@@ -73,6 +74,23 @@ func parseLines(p *model.Page, id string, lines []string, hs *headingState) {
 				}
 			}
 			p.Nodes = append(p.Nodes, model.Node{Type: "code", Text: strings.TrimRight(strings.Join(b, "\n"), "\n"), Meta: parseCodeAttrs(attrs)})
+			continue
+		}
+		if m := nowikiOpen.FindStringSubmatch(trim); m != nil {
+			p.Nodes = append(p.Nodes, model.Node{Type: "nowiki", Text: m[1], Raw: trim})
+			continue
+		}
+		if strings.EqualFold(trim, "<nowiki>") {
+			var b []string
+			i++
+			for i < len(lines) {
+				if strings.EqualFold(strings.TrimSpace(lines[i]), "</nowiki>") {
+					break
+				}
+				b = append(b, lines[i])
+				i++
+			}
+			p.Nodes = append(p.Nodes, model.Node{Type: "nowiki", Text: strings.TrimRight(strings.Join(b, "\n"), "\n"), Raw: "<nowiki>"})
 			continue
 		}
 		if m := wrapSelf.FindStringSubmatch(trim); m != nil {
