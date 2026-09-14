@@ -27,9 +27,54 @@ Produktionssystem
 		t.Fatalf("warnings=%#v", p.Warnings)
 	}
 }
+
 func TestUTF8(t *testing.T) {
 	p := Parse("ä:seite", "===== Übergröße =====")
 	if p.Title != "Übergröße" {
 		t.Fatal(p.Title)
+	}
+}
+
+func TestParseListsTablesAndBlock(t *testing.T) {
+	p := Parse("storage:arrays", `Name - Modell
+* pure01 FA-X90R4
+* pure02 FA-X90R4
+- erster Schritt
+- zweiter Schritt
+^ Name ^ Modell ^
+| pure01 | FA-X90R4 |
+<block important>
+Snapshots stellen kein Backup dar.
+</block>`)
+
+	var bullets, ordered, rows int
+	for _, n := range p.Nodes {
+		switch n.Type {
+		case "bullet_item":
+			bullets++
+		case "ordered_item":
+			ordered++
+		case "table_row":
+			rows++
+			if len(n.Children) != 2 {
+				t.Fatalf("table row children=%d", len(n.Children))
+			}
+		}
+	}
+	if bullets != 2 || ordered != 2 {
+		t.Fatalf("lists bullets=%d ordered=%d", bullets, ordered)
+	}
+	if rows != 2 {
+		t.Fatalf("table rows=%d", rows)
+	}
+
+	foundImportant := false
+	for _, n := range p.Nodes {
+		if n.Type == "warning" && n.Meta != nil && n.Meta["kind"] == "important" {
+			foundImportant = true
+		}
+	}
+	if !foundImportant {
+		t.Fatal("important block was not parsed as warning")
 	}
 }
