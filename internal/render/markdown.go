@@ -1,14 +1,14 @@
 package render
 
-var lineBreak = regexp.MustCompile(`\\\\(\\s|$)`)
-
 import (
-	"regexp"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model"
 )
+
+var lineBreak = regexp.MustCompile(`\\\\(\\s|$)`)
 
 func Markdown(p model.Page) string {
 	var b strings.Builder
@@ -39,7 +39,7 @@ func Markdown(p model.Page) string {
 func markdownInline(s string) string {
 	s = sub.ReplaceAllString(s, "<sub>$1</sub>")
 	s = sup.ReplaceAllString(s, "<sup>$1</sup>")
-	s = lineBreak.ReplaceAllString(s, "<br/>")
+	s = lineBreak.ReplaceAllString(s, "<br/>$1")
 	return s
 }
 
