@@ -22,7 +22,7 @@ func TestConfluenceStorageRendersBracedSubscriptAndSuperscript(t *testing.T) {
 func TestConfluenceStorageDoesNotFormatSubscriptInsideAttachmentFilename(t *testing.T) {
 	p := parser.Parse("cc33:storage:howto:block:pure", "{{pure_architektur-uebericht.png}} {{pure_r4_rearview.png}}")
 	got := ConfluenceStorage(p)
-	if !strings.Contains(got, `ri:filename="cc33_storage_howto_block_pure_pure_architektur-uebericht.png"`) { t.Fatalf("attachment filename was modified by subscript formatting: %s", got) }
-	if !strings.Contains(got, `ri:filename="cc33_storage_howto_block_pure_pure_r4_rearview.png"`) { t.Fatalf("second attachment filename was modified by subscript formatting: %s", got) }
-	if strings.Contains(got, `ri:filename="cc33_storage_howto_block_pure_pure<sub>`) { t.Fatalf("subscript markup leaked into attachment filename: %s", got) }
+	if !strings.Contains(got, `ri:filename="cc33_storage_howto_block_pure_architektur-uebericht.png"`) { t.Fatalf("attachment filename was modified by subscript formatting: %s", got) }
+	if !strings.Contains(got, `ri:filename="cc33_storage_howto_block_pure_r4_rearview.png"`) { t.Fatalf("second attachment filename was modified by subscript formatting: %s", got) }
+	if strings.Contains(got, `ri:filename="cc33_storage_howto_block_pure_<sub>`) { t.Fatalf("subscript markup leaked into attachment filename: %s", got) }
 }
