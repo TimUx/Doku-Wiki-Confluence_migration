@@ -43,7 +43,7 @@ Die zentrale [[:server:backup|Backup-Dokumentation]] liegt im Namespace.
 
 	backupPage := parser.Parse("server:backup", `====== Backup ======
 
-Das Backup-Schema ist in {{:images:backup-schema.png|Backup Schema}} dokumentiert.
+Das Backup-Schema ist in {{:images:backup-schema.png?direct&800|Backup Schema}} dokumentiert.
 
 Siehe auch [[server:restore|Restore-Anleitung]].
 
@@ -58,7 +58,7 @@ Siehe auch [[server:restore|Restore-Anleitung]].
 
 Die [[:server:backup|Backup-Seite]] beschreibt die Ausgangslage.
 
-{{:docs:backup-schema.png|Restore Schema}}
+{{:docs:backup-schema.png?400x250|Restore Schema}}
 
 {{page>server:backup}}
 `)
@@ -140,6 +140,7 @@ Die [[:server:backup|Backup-Seite]] beschreibt die Ausgangslage.
 
 	backupStorage := files["pages/002_Backup/confluence-storage.xml"]
 	if !strings.Contains(backupStorage, `ri:filename="images_backup-schema.png"`) { t.Errorf("backup page does not reference namespace-qualified attachment name: %s", backupStorage) }
+	if !strings.Contains(backupStorage, `<ac:image ac:width="800"><ri:attachment ri:filename="images_backup-schema.png"/></ac:image>`) { t.Errorf("backup image dimensions were not preserved: %s", backupStorage) }
 	if strings.Contains(backupStorage, `ri:filename="docs_backup-schema.png"`) { t.Errorf("backup page references another page's attachment") }
 	if !strings.Contains(backupStorage, "[DOKUWIKI LINK: server:restore]") {
 		t.Errorf("backup page lost its internal link placeholder: %s", backupStorage)
@@ -150,6 +151,7 @@ Die [[:server:backup|Backup-Seite]] beschreibt die Ausgangslage.
 
 	restoreStorage := files["pages/003_Restore/confluence-storage.xml"]
 	if !strings.Contains(restoreStorage, `ri:filename="docs_backup-schema.png"`) { t.Errorf("restore page does not reference its namespace-qualified attachment name: %s", restoreStorage) }
+	if !strings.Contains(restoreStorage, `<ac:image ac:width="400" ac:height="250"><ri:attachment ri:filename="docs_backup-schema.png"/></ac:image>`) { t.Errorf("restore image dimensions were not preserved: %s", restoreStorage) }
 	if !strings.Contains(restoreStorage, "[DOKUWIKI LINK: server:backup]") {
 		t.Errorf("restore page lost its cross-page link placeholder: %s", restoreStorage)
 	}
