@@ -1,7 +1,7 @@
 package render
 
 import("fmt";"html";"path/filepath";"regexp";"strings";"github.com/TimUx/Doku-Wiki-Confluence_migration/internal/model")
-var confluenceMedia=regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?[^}|]*)?(?:\|([^}]*))?\s*\}\}`)
+var confluenceMedia=regexp.MustCompile(`\{\{\s*([^}|?]+)(?:\?([^}|]*))?(?:\|([^}]*))?\s*\}\}`)
 var confluenceLink=regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 var confluenceBold=regexp.MustCompile(`\*\*(.+?)\*\*`);var confluenceItalic=regexp.MustCompile(`//([^/\n]+?)//`);var confluenceUnderline=regexp.MustCompile(`__(.+?)__`);var confluenceMono=regexp.MustCompile(`''(.+?)''`);var confluenceStrike=regexp.MustCompile(`~~(.+?)~~`);var confluenceFootnote=regexp.MustCompile(`\(\((.+?)\)\)`);var confluenceSub=regexp.MustCompile(`_(\{[^}]+\}|[[:alnum:]])`);var confluenceSup=regexp.MustCompile(`\^(\{[^}]+\}|[[:alnum:]])`);var confluenceLineBreak=regexp.MustCompile(`\\\\(\s|$)`)
 func AttachmentNames(p model.Page)map[string]string{out:=map[string]string{};used:=map[string]int{};for _,ref:=range p.Media{if _,ok:=out[ref.Target];ok{continue};target:=strings.TrimSpace(strings.ReplaceAll(ref.Target,"\\:",":"));name:=target;if name==""{name="attachment"};name=strings.ReplaceAll(name,":","_");name=strings.TrimPrefix(name,"_");name=strings.Trim(name," ");var b strings.Builder;for _,r:=range name{if(r>='a'&&r<='z')||(r>='A'&&r<='Z')||(r>='0'&&r<='9')||strings.ContainsRune("._-",r){b.WriteRune(r)}else{b.WriteByte('_')}};name=b.String();if name==""{name="attachment"};key:=strings.ToLower(name);used[key]++;if used[key]>1{ext:=filepath.Ext(name);name=strings.TrimSuffix(name,ext)+fmt.Sprintf("_%d",used[key])+ext};out[ref.Target]=name};return out}
